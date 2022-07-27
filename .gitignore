@@ -143,6 +143,7 @@ fabric.properties
 
 # End of https://www.toptal.com/developers/gitignore/api/goland,go
 
+.idea
 vendor/*
 !vendor/vendor.json
 coverage.out
