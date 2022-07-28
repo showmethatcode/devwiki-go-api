@@ -21,6 +21,10 @@ const (
 	EdgeRevisions = "revisions"
 	// EdgePointers holds the string denoting the pointers edge name in mutations.
 	EdgePointers = "pointers"
+	// EdgeSubjectID holds the string denoting the subject_id edge name in mutations.
+	EdgeSubjectID = "subject_id"
+	// EdgeRelatedID holds the string denoting the related_id edge name in mutations.
+	EdgeRelatedID = "related_id"
 	// Table holds the table name of the term in the database.
 	Table = "terms"
 	// RevisionsTable is the table that holds the revisions relation/edge.
@@ -37,6 +41,20 @@ const (
 	PointersInverseTable = "term_pointers"
 	// PointersColumn is the table column denoting the pointers relation/edge.
 	PointersColumn = "term_id"
+	// SubjectIDTable is the table that holds the subject_id relation/edge.
+	SubjectIDTable = "term_relateds"
+	// SubjectIDInverseTable is the table name for the TermRelated entity.
+	// It exists in this package in order to avoid circular dependency with the "termrelated" package.
+	SubjectIDInverseTable = "term_relateds"
+	// SubjectIDColumn is the table column denoting the subject_id relation/edge.
+	SubjectIDColumn = "term_subject_id"
+	// RelatedIDTable is the table that holds the related_id relation/edge.
+	RelatedIDTable = "term_relateds"
+	// RelatedIDInverseTable is the table name for the TermRelated entity.
+	// It exists in this package in order to avoid circular dependency with the "termrelated" package.
+	RelatedIDInverseTable = "term_relateds"
+	// RelatedIDColumn is the table column denoting the related_id relation/edge.
+	RelatedIDColumn = "term_related_id"
 )
 
 // Columns holds all SQL columns for term fields.

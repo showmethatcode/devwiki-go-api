@@ -33,5 +33,7 @@ func (Term) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("revisions", TermRevision.Type),
 		edge.To("pointers", TermPointer.Type),
+		edge.To("subject_id", TermRelated.Type),
+		edge.To("related_id", TermRelated.Type),
 	}
 }

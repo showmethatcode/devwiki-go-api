@@ -50,12 +50,28 @@ var (
 	// TermRelatedsColumns holds the columns for the "term_relateds" table.
 	TermRelatedsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "term_subject_id", Type: field.TypeInt, Nullable: true},
+		{Name: "term_related_id", Type: field.TypeInt, Nullable: true},
 	}
 	// TermRelatedsTable holds the schema information for the "term_relateds" table.
 	TermRelatedsTable = &schema.Table{
 		Name:       "term_relateds",
 		Columns:    TermRelatedsColumns,
 		PrimaryKey: []*schema.Column{TermRelatedsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "term_relateds_terms_subject_id",
+				Columns:    []*schema.Column{TermRelatedsColumns[1]},
+				RefColumns: []*schema.Column{TermsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "term_relateds_terms_related_id",
+				Columns:    []*schema.Column{TermRelatedsColumns[2]},
+				RefColumns: []*schema.Column{TermsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// TermRevisionsColumns holds the columns for the "term_revisions" table.
 	TermRevisionsColumns = []*schema.Column{
@@ -91,5 +107,7 @@ var (
 func init() {
 	TermPointersTable.ForeignKeys[0].RefTable = TermsTable
 	TermPointersTable.ForeignKeys[1].RefTable = TermRevisionsTable
+	TermRelatedsTable.ForeignKeys[0].RefTable = TermsTable
+	TermRelatedsTable.ForeignKeys[1].RefTable = TermsTable
 	TermRevisionsTable.ForeignKeys[0].RefTable = TermsTable
 }

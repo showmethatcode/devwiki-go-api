@@ -6,6 +6,7 @@ import (
 	"context"
 	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrelated"
 	"devwiki/ent/termrevision"
 	"errors"
 	"fmt"
@@ -84,6 +85,36 @@ func (tc *TermCreate) AddPointers(t ...*TermPointer) *TermCreate {
 		ids[i] = t[i].ID
 	}
 	return tc.AddPointerIDs(ids...)
+}
+
+// AddSubjectIDIDs adds the "subject_id" edge to the TermRelated entity by IDs.
+func (tc *TermCreate) AddSubjectIDIDs(ids ...int) *TermCreate {
+	tc.mutation.AddSubjectIDIDs(ids...)
+	return tc
+}
+
+// AddSubjectID adds the "subject_id" edges to the TermRelated entity.
+func (tc *TermCreate) AddSubjectID(t ...*TermRelated) *TermCreate {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tc.AddSubjectIDIDs(ids...)
+}
+
+// AddRelatedIDIDs adds the "related_id" edge to the TermRelated entity by IDs.
+func (tc *TermCreate) AddRelatedIDIDs(ids ...int) *TermCreate {
+	tc.mutation.AddRelatedIDIDs(ids...)
+	return tc
+}
+
+// AddRelatedID adds the "related_id" edges to the TermRelated entity.
+func (tc *TermCreate) AddRelatedID(t ...*TermRelated) *TermCreate {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tc.AddRelatedIDIDs(ids...)
 }
 
 // Mutation returns the TermMutation object of the builder.
@@ -265,6 +296,44 @@ func (tc *TermCreate) createSpec() (*Term, *sqlgraph.CreateSpec) {
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: termpointer.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := tc.mutation.SubjectIDIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.SubjectIDTable,
+			Columns: []string{term.SubjectIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := tc.mutation.RelatedIDIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.RelatedIDTable,
+			Columns: []string{term.RelatedIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
 				},
 			},
 		}

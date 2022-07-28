@@ -261,6 +261,38 @@ func (c *TermClient) QueryPointers(t *Term) *TermPointerQuery {
 	return query
 }
 
+// QuerySubjectID queries the subject_id edge of a Term.
+func (c *TermClient) QuerySubjectID(t *Term) *TermRelatedQuery {
+	query := &TermRelatedQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(term.Table, term.FieldID, id),
+			sqlgraph.To(termrelated.Table, termrelated.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, term.SubjectIDTable, term.SubjectIDColumn),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRelatedID queries the related_id edge of a Term.
+func (c *TermClient) QueryRelatedID(t *Term) *TermRelatedQuery {
+	query := &TermRelatedQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(term.Table, term.FieldID, id),
+			sqlgraph.To(termrelated.Table, termrelated.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, term.RelatedIDTable, term.RelatedIDColumn),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *TermClient) Hooks() []Hook {
 	return c.hooks.Term
@@ -471,6 +503,38 @@ func (c *TermRelatedClient) GetX(ctx context.Context, id int) *TermRelated {
 		panic(err)
 	}
 	return obj
+}
+
+// QuerySubject queries the subject edge of a TermRelated.
+func (c *TermRelatedClient) QuerySubject(tr *TermRelated) *TermQuery {
+	query := &TermQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := tr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(termrelated.Table, termrelated.FieldID, id),
+			sqlgraph.To(term.Table, term.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, termrelated.SubjectTable, termrelated.SubjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(tr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRelated queries the related edge of a TermRelated.
+func (c *TermRelatedClient) QueryRelated(tr *TermRelated) *TermQuery {
+	query := &TermQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := tr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(termrelated.Table, termrelated.FieldID, id),
+			sqlgraph.To(term.Table, term.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, termrelated.RelatedTable, termrelated.RelatedColumn),
+		)
+		fromV = sqlgraph.Neighbors(tr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // Hooks returns the client hooks.

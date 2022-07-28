@@ -421,6 +421,62 @@ func HasPointersWith(preds ...predicate.TermPointer) predicate.Term {
 	})
 }
 
+// HasSubjectID applies the HasEdge predicate on the "subject_id" edge.
+func HasSubjectID() predicate.Term {
+	return predicate.Term(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(SubjectIDTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, SubjectIDTable, SubjectIDColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSubjectIDWith applies the HasEdge predicate on the "subject_id" edge with a given conditions (other predicates).
+func HasSubjectIDWith(preds ...predicate.TermRelated) predicate.Term {
+	return predicate.Term(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(SubjectIDInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, SubjectIDTable, SubjectIDColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasRelatedID applies the HasEdge predicate on the "related_id" edge.
+func HasRelatedID() predicate.Term {
+	return predicate.Term(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(RelatedIDTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, RelatedIDTable, RelatedIDColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRelatedIDWith applies the HasEdge predicate on the "related_id" edge with a given conditions (other predicates).
+func HasRelatedIDWith(preds ...predicate.TermRelated) predicate.Term {
+	return predicate.Term(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(RelatedIDInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, RelatedIDTable, RelatedIDColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Term) predicate.Term {
 	return predicate.Term(func(s *sql.Selector) {

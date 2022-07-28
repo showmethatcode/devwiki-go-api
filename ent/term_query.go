@@ -8,6 +8,7 @@ import (
 	"devwiki/ent/predicate"
 	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrelated"
 	"devwiki/ent/termrevision"
 	"fmt"
 	"math"
@@ -29,6 +30,8 @@ type TermQuery struct {
 	// eager-loading edges.
 	withRevisions *TermRevisionQuery
 	withPointers  *TermPointerQuery
+	withSubjectID *TermRelatedQuery
+	withRelatedID *TermRelatedQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -102,6 +105,50 @@ func (tq *TermQuery) QueryPointers() *TermPointerQuery {
 			sqlgraph.From(term.Table, term.FieldID, selector),
 			sqlgraph.To(termpointer.Table, termpointer.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, term.PointersTable, term.PointersColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QuerySubjectID chains the current query on the "subject_id" edge.
+func (tq *TermQuery) QuerySubjectID() *TermRelatedQuery {
+	query := &TermRelatedQuery{config: tq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := tq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := tq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(term.Table, term.FieldID, selector),
+			sqlgraph.To(termrelated.Table, termrelated.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, term.SubjectIDTable, term.SubjectIDColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRelatedID chains the current query on the "related_id" edge.
+func (tq *TermQuery) QueryRelatedID() *TermRelatedQuery {
+	query := &TermRelatedQuery{config: tq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := tq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := tq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(term.Table, term.FieldID, selector),
+			sqlgraph.To(termrelated.Table, termrelated.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, term.RelatedIDTable, term.RelatedIDColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
 		return fromU, nil
@@ -292,6 +339,8 @@ func (tq *TermQuery) Clone() *TermQuery {
 		predicates:    append([]predicate.Term{}, tq.predicates...),
 		withRevisions: tq.withRevisions.Clone(),
 		withPointers:  tq.withPointers.Clone(),
+		withSubjectID: tq.withSubjectID.Clone(),
+		withRelatedID: tq.withRelatedID.Clone(),
 		// clone intermediate query.
 		sql:    tq.sql.Clone(),
 		path:   tq.path,
@@ -318,6 +367,28 @@ func (tq *TermQuery) WithPointers(opts ...func(*TermPointerQuery)) *TermQuery {
 		opt(query)
 	}
 	tq.withPointers = query
+	return tq
+}
+
+// WithSubjectID tells the query-builder to eager-load the nodes that are connected to
+// the "subject_id" edge. The optional arguments are used to configure the query builder of the edge.
+func (tq *TermQuery) WithSubjectID(opts ...func(*TermRelatedQuery)) *TermQuery {
+	query := &TermRelatedQuery{config: tq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	tq.withSubjectID = query
+	return tq
+}
+
+// WithRelatedID tells the query-builder to eager-load the nodes that are connected to
+// the "related_id" edge. The optional arguments are used to configure the query builder of the edge.
+func (tq *TermQuery) WithRelatedID(opts ...func(*TermRelatedQuery)) *TermQuery {
+	query := &TermRelatedQuery{config: tq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	tq.withRelatedID = query
 	return tq
 }
 
@@ -391,9 +462,11 @@ func (tq *TermQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Term, e
 	var (
 		nodes       = []*Term{}
 		_spec       = tq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [4]bool{
 			tq.withRevisions != nil,
 			tq.withPointers != nil,
+			tq.withSubjectID != nil,
+			tq.withRelatedID != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
@@ -462,6 +535,64 @@ func (tq *TermQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Term, e
 				return nil, fmt.Errorf(`unexpected foreign-key "term_id" returned %v for node %v`, fk, n.ID)
 			}
 			node.Edges.Pointers = append(node.Edges.Pointers, n)
+		}
+	}
+
+	if query := tq.withSubjectID; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*Term)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.SubjectID = []*TermRelated{}
+		}
+		query.withFKs = true
+		query.Where(predicate.TermRelated(func(s *sql.Selector) {
+			s.Where(sql.InValues(term.SubjectIDColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.term_subject_id
+			if fk == nil {
+				return nil, fmt.Errorf(`foreign-key "term_subject_id" is nil for node %v`, n.ID)
+			}
+			node, ok := nodeids[*fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "term_subject_id" returned %v for node %v`, *fk, n.ID)
+			}
+			node.Edges.SubjectID = append(node.Edges.SubjectID, n)
+		}
+	}
+
+	if query := tq.withRelatedID; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*Term)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.RelatedID = []*TermRelated{}
+		}
+		query.withFKs = true
+		query.Where(predicate.TermRelated(func(s *sql.Selector) {
+			s.Where(sql.InValues(term.RelatedIDColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.term_related_id
+			if fk == nil {
+				return nil, fmt.Errorf(`foreign-key "term_related_id" is nil for node %v`, n.ID)
+			}
+			node, ok := nodeids[*fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "term_related_id" returned %v for node %v`, *fk, n.ID)
+			}
+			node.Edges.RelatedID = append(node.Edges.RelatedID, n)
 		}
 	}
 

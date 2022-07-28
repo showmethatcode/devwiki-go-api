@@ -7,6 +7,7 @@ import (
 	"devwiki/ent/predicate"
 	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrelated"
 	"devwiki/ent/termrevision"
 	"errors"
 	"fmt"
@@ -72,6 +73,36 @@ func (tu *TermUpdate) AddPointers(t ...*TermPointer) *TermUpdate {
 	return tu.AddPointerIDs(ids...)
 }
 
+// AddSubjectIDIDs adds the "subject_id" edge to the TermRelated entity by IDs.
+func (tu *TermUpdate) AddSubjectIDIDs(ids ...int) *TermUpdate {
+	tu.mutation.AddSubjectIDIDs(ids...)
+	return tu
+}
+
+// AddSubjectID adds the "subject_id" edges to the TermRelated entity.
+func (tu *TermUpdate) AddSubjectID(t ...*TermRelated) *TermUpdate {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tu.AddSubjectIDIDs(ids...)
+}
+
+// AddRelatedIDIDs adds the "related_id" edge to the TermRelated entity by IDs.
+func (tu *TermUpdate) AddRelatedIDIDs(ids ...int) *TermUpdate {
+	tu.mutation.AddRelatedIDIDs(ids...)
+	return tu
+}
+
+// AddRelatedID adds the "related_id" edges to the TermRelated entity.
+func (tu *TermUpdate) AddRelatedID(t ...*TermRelated) *TermUpdate {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tu.AddRelatedIDIDs(ids...)
+}
+
 // Mutation returns the TermMutation object of the builder.
 func (tu *TermUpdate) Mutation() *TermMutation {
 	return tu.mutation
@@ -117,6 +148,48 @@ func (tu *TermUpdate) RemovePointers(t ...*TermPointer) *TermUpdate {
 		ids[i] = t[i].ID
 	}
 	return tu.RemovePointerIDs(ids...)
+}
+
+// ClearSubjectID clears all "subject_id" edges to the TermRelated entity.
+func (tu *TermUpdate) ClearSubjectID() *TermUpdate {
+	tu.mutation.ClearSubjectID()
+	return tu
+}
+
+// RemoveSubjectIDIDs removes the "subject_id" edge to TermRelated entities by IDs.
+func (tu *TermUpdate) RemoveSubjectIDIDs(ids ...int) *TermUpdate {
+	tu.mutation.RemoveSubjectIDIDs(ids...)
+	return tu
+}
+
+// RemoveSubjectID removes "subject_id" edges to TermRelated entities.
+func (tu *TermUpdate) RemoveSubjectID(t ...*TermRelated) *TermUpdate {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tu.RemoveSubjectIDIDs(ids...)
+}
+
+// ClearRelatedID clears all "related_id" edges to the TermRelated entity.
+func (tu *TermUpdate) ClearRelatedID() *TermUpdate {
+	tu.mutation.ClearRelatedID()
+	return tu
+}
+
+// RemoveRelatedIDIDs removes the "related_id" edge to TermRelated entities by IDs.
+func (tu *TermUpdate) RemoveRelatedIDIDs(ids ...int) *TermUpdate {
+	tu.mutation.RemoveRelatedIDIDs(ids...)
+	return tu
+}
+
+// RemoveRelatedID removes "related_id" edges to TermRelated entities.
+func (tu *TermUpdate) RemoveRelatedID(t ...*TermRelated) *TermUpdate {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tu.RemoveRelatedIDIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -322,6 +395,114 @@ func (tu *TermUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if tu.mutation.SubjectIDCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.SubjectIDTable,
+			Columns: []string{term.SubjectIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tu.mutation.RemovedSubjectIDIDs(); len(nodes) > 0 && !tu.mutation.SubjectIDCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.SubjectIDTable,
+			Columns: []string{term.SubjectIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tu.mutation.SubjectIDIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.SubjectIDTable,
+			Columns: []string{term.SubjectIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if tu.mutation.RelatedIDCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.RelatedIDTable,
+			Columns: []string{term.RelatedIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tu.mutation.RemovedRelatedIDIDs(); len(nodes) > 0 && !tu.mutation.RelatedIDCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.RelatedIDTable,
+			Columns: []string{term.RelatedIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tu.mutation.RelatedIDIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.RelatedIDTable,
+			Columns: []string{term.RelatedIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, tu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{term.Label}
@@ -383,6 +564,36 @@ func (tuo *TermUpdateOne) AddPointers(t ...*TermPointer) *TermUpdateOne {
 	return tuo.AddPointerIDs(ids...)
 }
 
+// AddSubjectIDIDs adds the "subject_id" edge to the TermRelated entity by IDs.
+func (tuo *TermUpdateOne) AddSubjectIDIDs(ids ...int) *TermUpdateOne {
+	tuo.mutation.AddSubjectIDIDs(ids...)
+	return tuo
+}
+
+// AddSubjectID adds the "subject_id" edges to the TermRelated entity.
+func (tuo *TermUpdateOne) AddSubjectID(t ...*TermRelated) *TermUpdateOne {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tuo.AddSubjectIDIDs(ids...)
+}
+
+// AddRelatedIDIDs adds the "related_id" edge to the TermRelated entity by IDs.
+func (tuo *TermUpdateOne) AddRelatedIDIDs(ids ...int) *TermUpdateOne {
+	tuo.mutation.AddRelatedIDIDs(ids...)
+	return tuo
+}
+
+// AddRelatedID adds the "related_id" edges to the TermRelated entity.
+func (tuo *TermUpdateOne) AddRelatedID(t ...*TermRelated) *TermUpdateOne {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tuo.AddRelatedIDIDs(ids...)
+}
+
 // Mutation returns the TermMutation object of the builder.
 func (tuo *TermUpdateOne) Mutation() *TermMutation {
 	return tuo.mutation
@@ -428,6 +639,48 @@ func (tuo *TermUpdateOne) RemovePointers(t ...*TermPointer) *TermUpdateOne {
 		ids[i] = t[i].ID
 	}
 	return tuo.RemovePointerIDs(ids...)
+}
+
+// ClearSubjectID clears all "subject_id" edges to the TermRelated entity.
+func (tuo *TermUpdateOne) ClearSubjectID() *TermUpdateOne {
+	tuo.mutation.ClearSubjectID()
+	return tuo
+}
+
+// RemoveSubjectIDIDs removes the "subject_id" edge to TermRelated entities by IDs.
+func (tuo *TermUpdateOne) RemoveSubjectIDIDs(ids ...int) *TermUpdateOne {
+	tuo.mutation.RemoveSubjectIDIDs(ids...)
+	return tuo
+}
+
+// RemoveSubjectID removes "subject_id" edges to TermRelated entities.
+func (tuo *TermUpdateOne) RemoveSubjectID(t ...*TermRelated) *TermUpdateOne {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tuo.RemoveSubjectIDIDs(ids...)
+}
+
+// ClearRelatedID clears all "related_id" edges to the TermRelated entity.
+func (tuo *TermUpdateOne) ClearRelatedID() *TermUpdateOne {
+	tuo.mutation.ClearRelatedID()
+	return tuo
+}
+
+// RemoveRelatedIDIDs removes the "related_id" edge to TermRelated entities by IDs.
+func (tuo *TermUpdateOne) RemoveRelatedIDIDs(ids ...int) *TermUpdateOne {
+	tuo.mutation.RemoveRelatedIDIDs(ids...)
+	return tuo
+}
+
+// RemoveRelatedID removes "related_id" edges to TermRelated entities.
+func (tuo *TermUpdateOne) RemoveRelatedID(t ...*TermRelated) *TermUpdateOne {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tuo.RemoveRelatedIDIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -655,6 +908,114 @@ func (tuo *TermUpdateOne) sqlSave(ctx context.Context) (_node *Term, err error) 
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: termpointer.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if tuo.mutation.SubjectIDCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.SubjectIDTable,
+			Columns: []string{term.SubjectIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tuo.mutation.RemovedSubjectIDIDs(); len(nodes) > 0 && !tuo.mutation.SubjectIDCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.SubjectIDTable,
+			Columns: []string{term.SubjectIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tuo.mutation.SubjectIDIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.SubjectIDTable,
+			Columns: []string{term.SubjectIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if tuo.mutation.RelatedIDCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.RelatedIDTable,
+			Columns: []string{term.RelatedIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tuo.mutation.RemovedRelatedIDIDs(); len(nodes) > 0 && !tuo.mutation.RelatedIDCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.RelatedIDTable,
+			Columns: []string{term.RelatedIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tuo.mutation.RelatedIDIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.RelatedIDTable,
+			Columns: []string{term.RelatedIDColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrelated.FieldID,
 				},
 			},
 		}

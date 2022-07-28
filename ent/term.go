@@ -33,9 +33,13 @@ type TermEdges struct {
 	Revisions []*TermRevision `json:"revisions,omitempty"`
 	// Pointers holds the value of the pointers edge.
 	Pointers []*TermPointer `json:"pointers,omitempty"`
+	// SubjectID holds the value of the subject_id edge.
+	SubjectID []*TermRelated `json:"subject_id,omitempty"`
+	// RelatedID holds the value of the related_id edge.
+	RelatedID []*TermRelated `json:"related_id,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [4]bool
 }
 
 // RevisionsOrErr returns the Revisions value or an error if the edge
@@ -54,6 +58,24 @@ func (e TermEdges) PointersOrErr() ([]*TermPointer, error) {
 		return e.Pointers, nil
 	}
 	return nil, &NotLoadedError{edge: "pointers"}
+}
+
+// SubjectIDOrErr returns the SubjectID value or an error if the edge
+// was not loaded in eager-loading.
+func (e TermEdges) SubjectIDOrErr() ([]*TermRelated, error) {
+	if e.loadedTypes[2] {
+		return e.SubjectID, nil
+	}
+	return nil, &NotLoadedError{edge: "subject_id"}
+}
+
+// RelatedIDOrErr returns the RelatedID value or an error if the edge
+// was not loaded in eager-loading.
+func (e TermEdges) RelatedIDOrErr() ([]*TermRelated, error) {
+	if e.loadedTypes[3] {
+		return e.RelatedID, nil
+	}
+	return nil, &NotLoadedError{edge: "related_id"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -119,6 +141,16 @@ func (t *Term) QueryRevisions() *TermRevisionQuery {
 // QueryPointers queries the "pointers" edge of the Term entity.
 func (t *Term) QueryPointers() *TermPointerQuery {
 	return (&TermClient{config: t.config}).QueryPointers(t)
+}
+
+// QuerySubjectID queries the "subject_id" edge of the Term entity.
+func (t *Term) QuerySubjectID() *TermRelatedQuery {
+	return (&TermClient{config: t.config}).QuerySubjectID(t)
+}
+
+// QueryRelatedID queries the "related_id" edge of the Term entity.
+func (t *Term) QueryRelatedID() *TermRelatedQuery {
+	return (&TermClient{config: t.config}).QueryRelatedID(t)
 }
 
 // Update returns a builder for updating this Term.

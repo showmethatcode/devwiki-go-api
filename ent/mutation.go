@@ -7,6 +7,7 @@ import (
 	"devwiki/ent/predicate"
 	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrelated"
 	"devwiki/ent/termrevision"
 	"errors"
 	"fmt"
@@ -34,22 +35,28 @@ const (
 // TermMutation represents an operation that mutates the Term nodes in the graph.
 type TermMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *int
-	name             *string
-	created_at       *time.Time
-	updated_at       *time.Time
-	clearedFields    map[string]struct{}
-	revisions        map[int]struct{}
-	removedrevisions map[int]struct{}
-	clearedrevisions bool
-	pointers         map[int]struct{}
-	removedpointers  map[int]struct{}
-	clearedpointers  bool
-	done             bool
-	oldValue         func(context.Context) (*Term, error)
-	predicates       []predicate.Term
+	op                Op
+	typ               string
+	id                *int
+	name              *string
+	created_at        *time.Time
+	updated_at        *time.Time
+	clearedFields     map[string]struct{}
+	revisions         map[int]struct{}
+	removedrevisions  map[int]struct{}
+	clearedrevisions  bool
+	pointers          map[int]struct{}
+	removedpointers   map[int]struct{}
+	clearedpointers   bool
+	subject_id        map[int]struct{}
+	removedsubject_id map[int]struct{}
+	clearedsubject_id bool
+	related_id        map[int]struct{}
+	removedrelated_id map[int]struct{}
+	clearedrelated_id bool
+	done              bool
+	oldValue          func(context.Context) (*Term, error)
+	predicates        []predicate.Term
 }
 
 var _ ent.Mutation = (*TermMutation)(nil)
@@ -366,6 +373,114 @@ func (m *TermMutation) ResetPointers() {
 	m.removedpointers = nil
 }
 
+// AddSubjectIDIDs adds the "subject_id" edge to the TermRelated entity by ids.
+func (m *TermMutation) AddSubjectIDIDs(ids ...int) {
+	if m.subject_id == nil {
+		m.subject_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.subject_id[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSubjectID clears the "subject_id" edge to the TermRelated entity.
+func (m *TermMutation) ClearSubjectID() {
+	m.clearedsubject_id = true
+}
+
+// SubjectIDCleared reports if the "subject_id" edge to the TermRelated entity was cleared.
+func (m *TermMutation) SubjectIDCleared() bool {
+	return m.clearedsubject_id
+}
+
+// RemoveSubjectIDIDs removes the "subject_id" edge to the TermRelated entity by IDs.
+func (m *TermMutation) RemoveSubjectIDIDs(ids ...int) {
+	if m.removedsubject_id == nil {
+		m.removedsubject_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.subject_id, ids[i])
+		m.removedsubject_id[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSubjectID returns the removed IDs of the "subject_id" edge to the TermRelated entity.
+func (m *TermMutation) RemovedSubjectIDIDs() (ids []int) {
+	for id := range m.removedsubject_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SubjectIDIDs returns the "subject_id" edge IDs in the mutation.
+func (m *TermMutation) SubjectIDIDs() (ids []int) {
+	for id := range m.subject_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSubjectID resets all changes to the "subject_id" edge.
+func (m *TermMutation) ResetSubjectID() {
+	m.subject_id = nil
+	m.clearedsubject_id = false
+	m.removedsubject_id = nil
+}
+
+// AddRelatedIDIDs adds the "related_id" edge to the TermRelated entity by ids.
+func (m *TermMutation) AddRelatedIDIDs(ids ...int) {
+	if m.related_id == nil {
+		m.related_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.related_id[ids[i]] = struct{}{}
+	}
+}
+
+// ClearRelatedID clears the "related_id" edge to the TermRelated entity.
+func (m *TermMutation) ClearRelatedID() {
+	m.clearedrelated_id = true
+}
+
+// RelatedIDCleared reports if the "related_id" edge to the TermRelated entity was cleared.
+func (m *TermMutation) RelatedIDCleared() bool {
+	return m.clearedrelated_id
+}
+
+// RemoveRelatedIDIDs removes the "related_id" edge to the TermRelated entity by IDs.
+func (m *TermMutation) RemoveRelatedIDIDs(ids ...int) {
+	if m.removedrelated_id == nil {
+		m.removedrelated_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.related_id, ids[i])
+		m.removedrelated_id[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedRelatedID returns the removed IDs of the "related_id" edge to the TermRelated entity.
+func (m *TermMutation) RemovedRelatedIDIDs() (ids []int) {
+	for id := range m.removedrelated_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// RelatedIDIDs returns the "related_id" edge IDs in the mutation.
+func (m *TermMutation) RelatedIDIDs() (ids []int) {
+	for id := range m.related_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetRelatedID resets all changes to the "related_id" edge.
+func (m *TermMutation) ResetRelatedID() {
+	m.related_id = nil
+	m.clearedrelated_id = false
+	m.removedrelated_id = nil
+}
+
 // Where appends a list predicates to the TermMutation builder.
 func (m *TermMutation) Where(ps ...predicate.Term) {
 	m.predicates = append(m.predicates, ps...)
@@ -518,12 +633,18 @@ func (m *TermMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TermMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.revisions != nil {
 		edges = append(edges, term.EdgeRevisions)
 	}
 	if m.pointers != nil {
 		edges = append(edges, term.EdgePointers)
+	}
+	if m.subject_id != nil {
+		edges = append(edges, term.EdgeSubjectID)
+	}
+	if m.related_id != nil {
+		edges = append(edges, term.EdgeRelatedID)
 	}
 	return edges
 }
@@ -544,18 +665,36 @@ func (m *TermMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case term.EdgeSubjectID:
+		ids := make([]ent.Value, 0, len(m.subject_id))
+		for id := range m.subject_id {
+			ids = append(ids, id)
+		}
+		return ids
+	case term.EdgeRelatedID:
+		ids := make([]ent.Value, 0, len(m.related_id))
+		for id := range m.related_id {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TermMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.removedrevisions != nil {
 		edges = append(edges, term.EdgeRevisions)
 	}
 	if m.removedpointers != nil {
 		edges = append(edges, term.EdgePointers)
+	}
+	if m.removedsubject_id != nil {
+		edges = append(edges, term.EdgeSubjectID)
+	}
+	if m.removedrelated_id != nil {
+		edges = append(edges, term.EdgeRelatedID)
 	}
 	return edges
 }
@@ -576,18 +715,36 @@ func (m *TermMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case term.EdgeSubjectID:
+		ids := make([]ent.Value, 0, len(m.removedsubject_id))
+		for id := range m.removedsubject_id {
+			ids = append(ids, id)
+		}
+		return ids
+	case term.EdgeRelatedID:
+		ids := make([]ent.Value, 0, len(m.removedrelated_id))
+		for id := range m.removedrelated_id {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TermMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.clearedrevisions {
 		edges = append(edges, term.EdgeRevisions)
 	}
 	if m.clearedpointers {
 		edges = append(edges, term.EdgePointers)
+	}
+	if m.clearedsubject_id {
+		edges = append(edges, term.EdgeSubjectID)
+	}
+	if m.clearedrelated_id {
+		edges = append(edges, term.EdgeRelatedID)
 	}
 	return edges
 }
@@ -600,6 +757,10 @@ func (m *TermMutation) EdgeCleared(name string) bool {
 		return m.clearedrevisions
 	case term.EdgePointers:
 		return m.clearedpointers
+	case term.EdgeSubjectID:
+		return m.clearedsubject_id
+	case term.EdgeRelatedID:
+		return m.clearedrelated_id
 	}
 	return false
 }
@@ -621,6 +782,12 @@ func (m *TermMutation) ResetEdge(name string) error {
 		return nil
 	case term.EdgePointers:
 		m.ResetPointers()
+		return nil
+	case term.EdgeSubjectID:
+		m.ResetSubjectID()
+		return nil
+	case term.EdgeRelatedID:
+		m.ResetRelatedID()
 		return nil
 	}
 	return fmt.Errorf("unknown Term edge %s", name)
@@ -1138,13 +1305,17 @@ func (m *TermPointerMutation) ResetEdge(name string) error {
 // TermRelatedMutation represents an operation that mutates the TermRelated nodes in the graph.
 type TermRelatedMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*TermRelated, error)
-	predicates    []predicate.TermRelated
+	op             Op
+	typ            string
+	id             *int
+	clearedFields  map[string]struct{}
+	subject        *int
+	clearedsubject bool
+	related        *int
+	clearedrelated bool
+	done           bool
+	oldValue       func(context.Context) (*TermRelated, error)
+	predicates     []predicate.TermRelated
 }
 
 var _ ent.Mutation = (*TermRelatedMutation)(nil)
@@ -1245,6 +1416,84 @@ func (m *TermRelatedMutation) IDs(ctx context.Context) ([]int, error) {
 	}
 }
 
+// SetSubjectID sets the "subject" edge to the Term entity by id.
+func (m *TermRelatedMutation) SetSubjectID(id int) {
+	m.subject = &id
+}
+
+// ClearSubject clears the "subject" edge to the Term entity.
+func (m *TermRelatedMutation) ClearSubject() {
+	m.clearedsubject = true
+}
+
+// SubjectCleared reports if the "subject" edge to the Term entity was cleared.
+func (m *TermRelatedMutation) SubjectCleared() bool {
+	return m.clearedsubject
+}
+
+// SubjectID returns the "subject" edge ID in the mutation.
+func (m *TermRelatedMutation) SubjectID() (id int, exists bool) {
+	if m.subject != nil {
+		return *m.subject, true
+	}
+	return
+}
+
+// SubjectIDs returns the "subject" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SubjectID instead. It exists only for internal usage by the builders.
+func (m *TermRelatedMutation) SubjectIDs() (ids []int) {
+	if id := m.subject; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSubject resets all changes to the "subject" edge.
+func (m *TermRelatedMutation) ResetSubject() {
+	m.subject = nil
+	m.clearedsubject = false
+}
+
+// SetRelatedID sets the "related" edge to the Term entity by id.
+func (m *TermRelatedMutation) SetRelatedID(id int) {
+	m.related = &id
+}
+
+// ClearRelated clears the "related" edge to the Term entity.
+func (m *TermRelatedMutation) ClearRelated() {
+	m.clearedrelated = true
+}
+
+// RelatedCleared reports if the "related" edge to the Term entity was cleared.
+func (m *TermRelatedMutation) RelatedCleared() bool {
+	return m.clearedrelated
+}
+
+// RelatedID returns the "related" edge ID in the mutation.
+func (m *TermRelatedMutation) RelatedID() (id int, exists bool) {
+	if m.related != nil {
+		return *m.related, true
+	}
+	return
+}
+
+// RelatedIDs returns the "related" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RelatedID instead. It exists only for internal usage by the builders.
+func (m *TermRelatedMutation) RelatedIDs() (ids []int) {
+	if id := m.related; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRelated resets all changes to the "related" edge.
+func (m *TermRelatedMutation) ResetRelated() {
+	m.related = nil
+	m.clearedrelated = false
+}
+
 // Where appends a list predicates to the TermRelatedMutation builder.
 func (m *TermRelatedMutation) Where(ps ...predicate.TermRelated) {
 	m.predicates = append(m.predicates, ps...)
@@ -1338,49 +1587,95 @@ func (m *TermRelatedMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TermRelatedMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.subject != nil {
+		edges = append(edges, termrelated.EdgeSubject)
+	}
+	if m.related != nil {
+		edges = append(edges, termrelated.EdgeRelated)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *TermRelatedMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case termrelated.EdgeSubject:
+		if id := m.subject; id != nil {
+			return []ent.Value{*id}
+		}
+	case termrelated.EdgeRelated:
+		if id := m.related; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TermRelatedMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *TermRelatedMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TermRelatedMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.clearedsubject {
+		edges = append(edges, termrelated.EdgeSubject)
+	}
+	if m.clearedrelated {
+		edges = append(edges, termrelated.EdgeRelated)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *TermRelatedMutation) EdgeCleared(name string) bool {
+	switch name {
+	case termrelated.EdgeSubject:
+		return m.clearedsubject
+	case termrelated.EdgeRelated:
+		return m.clearedrelated
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *TermRelatedMutation) ClearEdge(name string) error {
+	switch name {
+	case termrelated.EdgeSubject:
+		m.ClearSubject()
+		return nil
+	case termrelated.EdgeRelated:
+		m.ClearRelated()
+		return nil
+	}
 	return fmt.Errorf("unknown TermRelated unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *TermRelatedMutation) ResetEdge(name string) error {
+	switch name {
+	case termrelated.EdgeSubject:
+		m.ResetSubject()
+		return nil
+	case termrelated.EdgeRelated:
+		m.ResetRelated()
+		return nil
+	}
 	return fmt.Errorf("unknown TermRelated edge %s", name)
 }
 
