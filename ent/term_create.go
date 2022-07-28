@@ -5,6 +5,7 @@ package ent
 import (
 	"context"
 	"devwiki/ent/term"
+	"devwiki/ent/termpointer"
 	"devwiki/ent/termrevision"
 	"errors"
 	"fmt"
@@ -68,6 +69,21 @@ func (tc *TermCreate) AddRevisions(t ...*TermRevision) *TermCreate {
 		ids[i] = t[i].ID
 	}
 	return tc.AddRevisionIDs(ids...)
+}
+
+// AddPointerIDs adds the "pointers" edge to the TermPointer entity by IDs.
+func (tc *TermCreate) AddPointerIDs(ids ...int) *TermCreate {
+	tc.mutation.AddPointerIDs(ids...)
+	return tc
+}
+
+// AddPointers adds the "pointers" edges to the TermPointer entity.
+func (tc *TermCreate) AddPointers(t ...*TermPointer) *TermCreate {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tc.AddPointerIDs(ids...)
 }
 
 // Mutation returns the TermMutation object of the builder.
@@ -230,6 +246,25 @@ func (tc *TermCreate) createSpec() (*Term, *sqlgraph.CreateSpec) {
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: termrevision.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := tc.mutation.PointersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.PointersTable,
+			Columns: []string{term.PointersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termpointer.FieldID,
 				},
 			},
 		}

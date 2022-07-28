@@ -3,7 +3,9 @@
 package ent
 
 import (
+	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrevision"
 	"fmt"
 	"strings"
 
@@ -12,9 +14,55 @@ import (
 
 // TermPointer is the model entity for the TermPointer schema.
 type TermPointer struct {
-	config
+	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// TermID holds the value of the "term_id" field.
+	TermID int `json:"term_id,omitempty"`
+	// RevisionID holds the value of the "revision_id" field.
+	RevisionID int `json:"revision_id,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the TermPointerQuery when eager-loading is set.
+	Edges TermPointerEdges `json:"edges"`
+}
+
+// TermPointerEdges holds the relations/edges for other nodes in the graph.
+type TermPointerEdges struct {
+	// Term holds the value of the term edge.
+	Term *Term `json:"term,omitempty"`
+	// Revision holds the value of the revision edge.
+	Revision *TermRevision `json:"revision,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// TermOrErr returns the Term value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e TermPointerEdges) TermOrErr() (*Term, error) {
+	if e.loadedTypes[0] {
+		if e.Term == nil {
+			// The edge term was loaded in eager-loading,
+			// but was not found.
+			return nil, &NotFoundError{label: term.Label}
+		}
+		return e.Term, nil
+	}
+	return nil, &NotLoadedError{edge: "term"}
+}
+
+// RevisionOrErr returns the Revision value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e TermPointerEdges) RevisionOrErr() (*TermRevision, error) {
+	if e.loadedTypes[1] {
+		if e.Revision == nil {
+			// The edge revision was loaded in eager-loading,
+			// but was not found.
+			return nil, &NotFoundError{label: termrevision.Label}
+		}
+		return e.Revision, nil
+	}
+	return nil, &NotLoadedError{edge: "revision"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -22,7 +70,7 @@ func (*TermPointer) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case termpointer.FieldID:
+		case termpointer.FieldID, termpointer.FieldTermID, termpointer.FieldRevisionID:
 			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type TermPointer", columns[i])
@@ -45,9 +93,31 @@ func (tp *TermPointer) assignValues(columns []string, values []interface{}) erro
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			tp.ID = int(value.Int64)
+		case termpointer.FieldTermID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field term_id", values[i])
+			} else if value.Valid {
+				tp.TermID = int(value.Int64)
+			}
+		case termpointer.FieldRevisionID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field revision_id", values[i])
+			} else if value.Valid {
+				tp.RevisionID = int(value.Int64)
+			}
 		}
 	}
 	return nil
+}
+
+// QueryTerm queries the "term" edge of the TermPointer entity.
+func (tp *TermPointer) QueryTerm() *TermQuery {
+	return (&TermPointerClient{config: tp.config}).QueryTerm(tp)
+}
+
+// QueryRevision queries the "revision" edge of the TermPointer entity.
+func (tp *TermPointer) QueryRevision() *TermRevisionQuery {
+	return (&TermPointerClient{config: tp.config}).QueryRevision(tp)
 }
 
 // Update returns a builder for updating this TermPointer.
@@ -72,7 +142,12 @@ func (tp *TermPointer) Unwrap() *TermPointer {
 func (tp *TermPointer) String() string {
 	var builder strings.Builder
 	builder.WriteString("TermPointer(")
-	builder.WriteString(fmt.Sprintf("id=%v", tp.ID))
+	builder.WriteString(fmt.Sprintf("id=%v, ", tp.ID))
+	builder.WriteString("term_id=")
+	builder.WriteString(fmt.Sprintf("%v", tp.TermID))
+	builder.WriteString(", ")
+	builder.WriteString("revision_id=")
+	builder.WriteString(fmt.Sprintf("%v", tp.RevisionID))
 	builder.WriteByte(')')
 	return builder.String()
 }

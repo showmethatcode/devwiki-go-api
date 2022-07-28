@@ -5,7 +5,9 @@ package ent
 import (
 	"context"
 	"devwiki/ent/predicate"
+	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrevision"
 	"errors"
 	"fmt"
 
@@ -27,9 +29,71 @@ func (tpu *TermPointerUpdate) Where(ps ...predicate.TermPointer) *TermPointerUpd
 	return tpu
 }
 
+// SetTermID sets the "term_id" field.
+func (tpu *TermPointerUpdate) SetTermID(i int) *TermPointerUpdate {
+	tpu.mutation.SetTermID(i)
+	return tpu
+}
+
+// SetNillableTermID sets the "term_id" field if the given value is not nil.
+func (tpu *TermPointerUpdate) SetNillableTermID(i *int) *TermPointerUpdate {
+	if i != nil {
+		tpu.SetTermID(*i)
+	}
+	return tpu
+}
+
+// ClearTermID clears the value of the "term_id" field.
+func (tpu *TermPointerUpdate) ClearTermID() *TermPointerUpdate {
+	tpu.mutation.ClearTermID()
+	return tpu
+}
+
+// SetRevisionID sets the "revision_id" field.
+func (tpu *TermPointerUpdate) SetRevisionID(i int) *TermPointerUpdate {
+	tpu.mutation.SetRevisionID(i)
+	return tpu
+}
+
+// SetNillableRevisionID sets the "revision_id" field if the given value is not nil.
+func (tpu *TermPointerUpdate) SetNillableRevisionID(i *int) *TermPointerUpdate {
+	if i != nil {
+		tpu.SetRevisionID(*i)
+	}
+	return tpu
+}
+
+// ClearRevisionID clears the value of the "revision_id" field.
+func (tpu *TermPointerUpdate) ClearRevisionID() *TermPointerUpdate {
+	tpu.mutation.ClearRevisionID()
+	return tpu
+}
+
+// SetTerm sets the "term" edge to the Term entity.
+func (tpu *TermPointerUpdate) SetTerm(t *Term) *TermPointerUpdate {
+	return tpu.SetTermID(t.ID)
+}
+
+// SetRevision sets the "revision" edge to the TermRevision entity.
+func (tpu *TermPointerUpdate) SetRevision(t *TermRevision) *TermPointerUpdate {
+	return tpu.SetRevisionID(t.ID)
+}
+
 // Mutation returns the TermPointerMutation object of the builder.
 func (tpu *TermPointerUpdate) Mutation() *TermPointerMutation {
 	return tpu.mutation
+}
+
+// ClearTerm clears the "term" edge to the Term entity.
+func (tpu *TermPointerUpdate) ClearTerm() *TermPointerUpdate {
+	tpu.mutation.ClearTerm()
+	return tpu
+}
+
+// ClearRevision clears the "revision" edge to the TermRevision entity.
+func (tpu *TermPointerUpdate) ClearRevision() *TermPointerUpdate {
+	tpu.mutation.ClearRevision()
+	return tpu
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -104,6 +168,76 @@ func (tpu *TermPointerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
+	if tpu.mutation.TermCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.TermTable,
+			Columns: []string{termpointer.TermColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: term.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tpu.mutation.TermIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.TermTable,
+			Columns: []string{termpointer.TermColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: term.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if tpu.mutation.RevisionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.RevisionTable,
+			Columns: []string{termpointer.RevisionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrevision.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tpu.mutation.RevisionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.RevisionTable,
+			Columns: []string{termpointer.RevisionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrevision.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, tpu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{termpointer.Label}
@@ -123,9 +257,71 @@ type TermPointerUpdateOne struct {
 	mutation *TermPointerMutation
 }
 
+// SetTermID sets the "term_id" field.
+func (tpuo *TermPointerUpdateOne) SetTermID(i int) *TermPointerUpdateOne {
+	tpuo.mutation.SetTermID(i)
+	return tpuo
+}
+
+// SetNillableTermID sets the "term_id" field if the given value is not nil.
+func (tpuo *TermPointerUpdateOne) SetNillableTermID(i *int) *TermPointerUpdateOne {
+	if i != nil {
+		tpuo.SetTermID(*i)
+	}
+	return tpuo
+}
+
+// ClearTermID clears the value of the "term_id" field.
+func (tpuo *TermPointerUpdateOne) ClearTermID() *TermPointerUpdateOne {
+	tpuo.mutation.ClearTermID()
+	return tpuo
+}
+
+// SetRevisionID sets the "revision_id" field.
+func (tpuo *TermPointerUpdateOne) SetRevisionID(i int) *TermPointerUpdateOne {
+	tpuo.mutation.SetRevisionID(i)
+	return tpuo
+}
+
+// SetNillableRevisionID sets the "revision_id" field if the given value is not nil.
+func (tpuo *TermPointerUpdateOne) SetNillableRevisionID(i *int) *TermPointerUpdateOne {
+	if i != nil {
+		tpuo.SetRevisionID(*i)
+	}
+	return tpuo
+}
+
+// ClearRevisionID clears the value of the "revision_id" field.
+func (tpuo *TermPointerUpdateOne) ClearRevisionID() *TermPointerUpdateOne {
+	tpuo.mutation.ClearRevisionID()
+	return tpuo
+}
+
+// SetTerm sets the "term" edge to the Term entity.
+func (tpuo *TermPointerUpdateOne) SetTerm(t *Term) *TermPointerUpdateOne {
+	return tpuo.SetTermID(t.ID)
+}
+
+// SetRevision sets the "revision" edge to the TermRevision entity.
+func (tpuo *TermPointerUpdateOne) SetRevision(t *TermRevision) *TermPointerUpdateOne {
+	return tpuo.SetRevisionID(t.ID)
+}
+
 // Mutation returns the TermPointerMutation object of the builder.
 func (tpuo *TermPointerUpdateOne) Mutation() *TermPointerMutation {
 	return tpuo.mutation
+}
+
+// ClearTerm clears the "term" edge to the Term entity.
+func (tpuo *TermPointerUpdateOne) ClearTerm() *TermPointerUpdateOne {
+	tpuo.mutation.ClearTerm()
+	return tpuo
+}
+
+// ClearRevision clears the "revision" edge to the TermRevision entity.
+func (tpuo *TermPointerUpdateOne) ClearRevision() *TermPointerUpdateOne {
+	tpuo.mutation.ClearRevision()
+	return tpuo
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -229,6 +425,76 @@ func (tpuo *TermPointerUpdateOne) sqlSave(ctx context.Context) (_node *TermPoint
 				ps[i](selector)
 			}
 		}
+	}
+	if tpuo.mutation.TermCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.TermTable,
+			Columns: []string{termpointer.TermColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: term.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tpuo.mutation.TermIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.TermTable,
+			Columns: []string{termpointer.TermColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: term.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if tpuo.mutation.RevisionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.RevisionTable,
+			Columns: []string{termpointer.RevisionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrevision.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tpuo.mutation.RevisionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.RevisionTable,
+			Columns: []string{termpointer.RevisionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrevision.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &TermPointer{config: tpuo.config}
 	_spec.Assign = _node.assignValues

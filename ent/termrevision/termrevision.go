@@ -19,10 +19,19 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// EdgePointers holds the string denoting the pointers edge name in mutations.
+	EdgePointers = "pointers"
 	// EdgeTerm holds the string denoting the term edge name in mutations.
 	EdgeTerm = "term"
 	// Table holds the table name of the termrevision in the database.
 	Table = "term_revisions"
+	// PointersTable is the table that holds the pointers relation/edge.
+	PointersTable = "term_pointers"
+	// PointersInverseTable is the table name for the TermPointer entity.
+	// It exists in this package in order to avoid circular dependency with the "termpointer" package.
+	PointersInverseTable = "term_pointers"
+	// PointersColumn is the table column denoting the pointers relation/edge.
+	PointersColumn = "revision_id"
 	// TermTable is the table that holds the term relation/edge.
 	TermTable = "term_revisions"
 	// TermInverseTable is the table name for the Term entity.

@@ -34,6 +34,19 @@ func (f TermPointerFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value,
 	return f(ctx, mv)
 }
 
+// The TermRelatedFunc type is an adapter to allow the use of ordinary
+// function as TermRelated mutator.
+type TermRelatedFunc func(context.Context, *ent.TermRelatedMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TermRelatedFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	mv, ok := m.(*ent.TermRelatedMutation)
+	if !ok {
+		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TermRelatedMutation", m)
+	}
+	return f(ctx, mv)
+}
+
 // The TermRevisionFunc type is an adapter to allow the use of ordinary
 // function as TermRevision mutator.
 type TermRevisionFunc func(context.Context, *ent.TermRevisionMutation) (ent.Value, error)

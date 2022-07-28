@@ -32,17 +32,28 @@ type TermRevision struct {
 
 // TermRevisionEdges holds the relations/edges for other nodes in the graph.
 type TermRevisionEdges struct {
+	// Pointers holds the value of the pointers edge.
+	Pointers []*TermPointer `json:"pointers,omitempty"`
 	// Term holds the value of the term edge.
 	Term *Term `json:"term,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
+}
+
+// PointersOrErr returns the Pointers value or an error if the edge
+// was not loaded in eager-loading.
+func (e TermRevisionEdges) PointersOrErr() ([]*TermPointer, error) {
+	if e.loadedTypes[0] {
+		return e.Pointers, nil
+	}
+	return nil, &NotLoadedError{edge: "pointers"}
 }
 
 // TermOrErr returns the Term value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
 func (e TermRevisionEdges) TermOrErr() (*Term, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		if e.Term == nil {
 			// The edge term was loaded in eager-loading,
 			// but was not found.
@@ -112,6 +123,11 @@ func (tr *TermRevision) assignValues(columns []string, values []interface{}) err
 		}
 	}
 	return nil
+}
+
+// QueryPointers queries the "pointers" edge of the TermRevision entity.
+func (tr *TermRevision) QueryPointers() *TermPointerQuery {
+	return (&TermRevisionClient{config: tr.config}).QueryPointers(tr)
 }
 
 // QueryTerm queries the "term" edge of the TermRevision entity.

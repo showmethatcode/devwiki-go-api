@@ -4,7 +4,9 @@ package ent
 
 import (
 	"context"
+	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrevision"
 	"fmt"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -16,6 +18,44 @@ type TermPointerCreate struct {
 	config
 	mutation *TermPointerMutation
 	hooks    []Hook
+}
+
+// SetTermID sets the "term_id" field.
+func (tpc *TermPointerCreate) SetTermID(i int) *TermPointerCreate {
+	tpc.mutation.SetTermID(i)
+	return tpc
+}
+
+// SetNillableTermID sets the "term_id" field if the given value is not nil.
+func (tpc *TermPointerCreate) SetNillableTermID(i *int) *TermPointerCreate {
+	if i != nil {
+		tpc.SetTermID(*i)
+	}
+	return tpc
+}
+
+// SetRevisionID sets the "revision_id" field.
+func (tpc *TermPointerCreate) SetRevisionID(i int) *TermPointerCreate {
+	tpc.mutation.SetRevisionID(i)
+	return tpc
+}
+
+// SetNillableRevisionID sets the "revision_id" field if the given value is not nil.
+func (tpc *TermPointerCreate) SetNillableRevisionID(i *int) *TermPointerCreate {
+	if i != nil {
+		tpc.SetRevisionID(*i)
+	}
+	return tpc
+}
+
+// SetTerm sets the "term" edge to the Term entity.
+func (tpc *TermPointerCreate) SetTerm(t *Term) *TermPointerCreate {
+	return tpc.SetTermID(t.ID)
+}
+
+// SetRevision sets the "revision" edge to the TermRevision entity.
+func (tpc *TermPointerCreate) SetRevision(t *TermRevision) *TermPointerCreate {
+	return tpc.SetRevisionID(t.ID)
 }
 
 // Mutation returns the TermPointerMutation object of the builder.
@@ -121,6 +161,46 @@ func (tpc *TermPointerCreate) createSpec() (*TermPointer, *sqlgraph.CreateSpec) 
 			},
 		}
 	)
+	if nodes := tpc.mutation.TermIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.TermTable,
+			Columns: []string{termpointer.TermColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: term.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.TermID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := tpc.mutation.RevisionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   termpointer.RevisionTable,
+			Columns: []string{termpointer.RevisionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termrevision.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.RevisionID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	return _node, _spec
 }
 

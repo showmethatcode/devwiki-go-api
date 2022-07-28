@@ -31,9 +31,11 @@ type Term struct {
 type TermEdges struct {
 	// Revisions holds the value of the revisions edge.
 	Revisions []*TermRevision `json:"revisions,omitempty"`
+	// Pointers holds the value of the pointers edge.
+	Pointers []*TermPointer `json:"pointers,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // RevisionsOrErr returns the Revisions value or an error if the edge
@@ -43,6 +45,15 @@ func (e TermEdges) RevisionsOrErr() ([]*TermRevision, error) {
 		return e.Revisions, nil
 	}
 	return nil, &NotLoadedError{edge: "revisions"}
+}
+
+// PointersOrErr returns the Pointers value or an error if the edge
+// was not loaded in eager-loading.
+func (e TermEdges) PointersOrErr() ([]*TermPointer, error) {
+	if e.loadedTypes[1] {
+		return e.Pointers, nil
+	}
+	return nil, &NotLoadedError{edge: "pointers"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -103,6 +114,11 @@ func (t *Term) assignValues(columns []string, values []interface{}) error {
 // QueryRevisions queries the "revisions" edge of the Term entity.
 func (t *Term) QueryRevisions() *TermRevisionQuery {
 	return (&TermClient{config: t.config}).QueryRevisions(t)
+}
+
+// QueryPointers queries the "pointers" edge of the Term entity.
+func (t *Term) QueryPointers() *TermPointerQuery {
+	return (&TermClient{config: t.config}).QueryPointers(t)
 }
 
 // Update returns a builder for updating this Term.

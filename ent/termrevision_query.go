@@ -4,8 +4,10 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"devwiki/ent/predicate"
 	"devwiki/ent/term"
+	"devwiki/ent/termpointer"
 	"devwiki/ent/termrevision"
 	"fmt"
 	"math"
@@ -25,7 +27,8 @@ type TermRevisionQuery struct {
 	fields     []string
 	predicates []predicate.TermRevision
 	// eager-loading edges.
-	withTerm *TermQuery
+	withPointers *TermPointerQuery
+	withTerm     *TermQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -60,6 +63,28 @@ func (trq *TermRevisionQuery) Unique(unique bool) *TermRevisionQuery {
 func (trq *TermRevisionQuery) Order(o ...OrderFunc) *TermRevisionQuery {
 	trq.order = append(trq.order, o...)
 	return trq
+}
+
+// QueryPointers chains the current query on the "pointers" edge.
+func (trq *TermRevisionQuery) QueryPointers() *TermPointerQuery {
+	query := &TermPointerQuery{config: trq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := trq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := trq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(termrevision.Table, termrevision.FieldID, selector),
+			sqlgraph.To(termpointer.Table, termpointer.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, termrevision.PointersTable, termrevision.PointersColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(trq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // QueryTerm chains the current query on the "term" edge.
@@ -260,17 +285,29 @@ func (trq *TermRevisionQuery) Clone() *TermRevisionQuery {
 		return nil
 	}
 	return &TermRevisionQuery{
-		config:     trq.config,
-		limit:      trq.limit,
-		offset:     trq.offset,
-		order:      append([]OrderFunc{}, trq.order...),
-		predicates: append([]predicate.TermRevision{}, trq.predicates...),
-		withTerm:   trq.withTerm.Clone(),
+		config:       trq.config,
+		limit:        trq.limit,
+		offset:       trq.offset,
+		order:        append([]OrderFunc{}, trq.order...),
+		predicates:   append([]predicate.TermRevision{}, trq.predicates...),
+		withPointers: trq.withPointers.Clone(),
+		withTerm:     trq.withTerm.Clone(),
 		// clone intermediate query.
 		sql:    trq.sql.Clone(),
 		path:   trq.path,
 		unique: trq.unique,
 	}
+}
+
+// WithPointers tells the query-builder to eager-load the nodes that are connected to
+// the "pointers" edge. The optional arguments are used to configure the query builder of the edge.
+func (trq *TermRevisionQuery) WithPointers(opts ...func(*TermPointerQuery)) *TermRevisionQuery {
+	query := &TermPointerQuery{config: trq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	trq.withPointers = query
+	return trq
 }
 
 // WithTerm tells the query-builder to eager-load the nodes that are connected to
@@ -354,7 +391,8 @@ func (trq *TermRevisionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 	var (
 		nodes       = []*TermRevision{}
 		_spec       = trq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
+			trq.withPointers != nil,
 			trq.withTerm != nil,
 		}
 	)
@@ -375,6 +413,31 @@ func (trq *TermRevisionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
+	}
+
+	if query := trq.withPointers; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*TermRevision)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Pointers = []*TermPointer{}
+		}
+		query.Where(predicate.TermPointer(func(s *sql.Selector) {
+			s.Where(sql.InValues(termrevision.PointersColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.RevisionID
+			node, ok := nodeids[fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "revision_id" returned %v for node %v`, fk, n.ID)
+			}
+			node.Edges.Pointers = append(node.Edges.Pointers, n)
+		}
 	}
 
 	if query := trq.withTerm; query != nil {

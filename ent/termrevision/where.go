@@ -448,6 +448,34 @@ func UpdatedAtLTE(v time.Time) predicate.TermRevision {
 	})
 }
 
+// HasPointers applies the HasEdge predicate on the "pointers" edge.
+func HasPointers() predicate.TermRevision {
+	return predicate.TermRevision(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(PointersTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PointersTable, PointersColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPointersWith applies the HasEdge predicate on the "pointers" edge with a given conditions (other predicates).
+func HasPointersWith(preds ...predicate.TermPointer) predicate.TermRevision {
+	return predicate.TermRevision(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(PointersInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PointersTable, PointersColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasTerm applies the HasEdge predicate on the "term" edge.
 func HasTerm() predicate.TermRevision {
 	return predicate.TermRevision(func(s *sql.Selector) {

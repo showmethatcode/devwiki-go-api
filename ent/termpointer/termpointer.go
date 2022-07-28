@@ -7,13 +7,37 @@ const (
 	Label = "term_pointer"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldTermID holds the string denoting the term_id field in the database.
+	FieldTermID = "term_id"
+	// FieldRevisionID holds the string denoting the revision_id field in the database.
+	FieldRevisionID = "revision_id"
+	// EdgeTerm holds the string denoting the term edge name in mutations.
+	EdgeTerm = "term"
+	// EdgeRevision holds the string denoting the revision edge name in mutations.
+	EdgeRevision = "revision"
 	// Table holds the table name of the termpointer in the database.
 	Table = "term_pointers"
+	// TermTable is the table that holds the term relation/edge.
+	TermTable = "term_pointers"
+	// TermInverseTable is the table name for the Term entity.
+	// It exists in this package in order to avoid circular dependency with the "term" package.
+	TermInverseTable = "terms"
+	// TermColumn is the table column denoting the term relation/edge.
+	TermColumn = "term_id"
+	// RevisionTable is the table that holds the revision relation/edge.
+	RevisionTable = "term_pointers"
+	// RevisionInverseTable is the table name for the TermRevision entity.
+	// It exists in this package in order to avoid circular dependency with the "termrevision" package.
+	RevisionInverseTable = "term_revisions"
+	// RevisionColumn is the table column denoting the revision relation/edge.
+	RevisionColumn = "revision_id"
 )
 
 // Columns holds all SQL columns for termpointer fields.
 var Columns = []string{
 	FieldID,
+	FieldTermID,
+	FieldRevisionID,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).

@@ -393,6 +393,34 @@ func HasRevisionsWith(preds ...predicate.TermRevision) predicate.Term {
 	})
 }
 
+// HasPointers applies the HasEdge predicate on the "pointers" edge.
+func HasPointers() predicate.Term {
+	return predicate.Term(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(PointersTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PointersTable, PointersColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPointersWith applies the HasEdge predicate on the "pointers" edge with a given conditions (other predicates).
+func HasPointersWith(preds ...predicate.TermPointer) predicate.Term {
+	return predicate.Term(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(PointersInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PointersTable, PointersColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Term) predicate.Term {
 	return predicate.Term(func(s *sql.Selector) {

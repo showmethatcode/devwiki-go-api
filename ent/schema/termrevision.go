@@ -34,6 +34,8 @@ func (TermRevision) Fields() []ent.Field {
 // Edges of the TermRevision.
 func (TermRevision) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.To("pointers", TermPointer.Type),
+
 		edge.From("term", Term.Type).
 			Ref("revisions").
 			Unique().

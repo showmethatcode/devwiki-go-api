@@ -6,6 +6,7 @@ import (
 	"context"
 	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrelated"
 	"devwiki/ent/termrevision"
 	"errors"
 	"fmt"
@@ -35,6 +36,7 @@ func columnChecker(table string) func(string) error {
 	checks := map[string]func(string) bool{
 		term.Table:         term.ValidColumn,
 		termpointer.Table:  termpointer.ValidColumn,
+		termrelated.Table:  termrelated.ValidColumn,
 		termrevision.Table: termrevision.ValidColumn,
 	}
 	check, ok := checks[table]

@@ -6,6 +6,7 @@ import (
 	"devwiki/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 // ID filters vertices based on their ID field.
@@ -76,6 +77,200 @@ func IDLT(id int) predicate.TermPointer {
 func IDLTE(id int) predicate.TermPointer {
 	return predicate.TermPointer(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldID), id))
+	})
+}
+
+// TermID applies equality check predicate on the "term_id" field. It's identical to TermIDEQ.
+func TermID(v int) predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldTermID), v))
+	})
+}
+
+// RevisionID applies equality check predicate on the "revision_id" field. It's identical to RevisionIDEQ.
+func RevisionID(v int) predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldRevisionID), v))
+	})
+}
+
+// TermIDEQ applies the EQ predicate on the "term_id" field.
+func TermIDEQ(v int) predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldTermID), v))
+	})
+}
+
+// TermIDNEQ applies the NEQ predicate on the "term_id" field.
+func TermIDNEQ(v int) predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldTermID), v))
+	})
+}
+
+// TermIDIn applies the In predicate on the "term_id" field.
+func TermIDIn(vs ...int) predicate.TermPointer {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.TermPointer(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldTermID), v...))
+	})
+}
+
+// TermIDNotIn applies the NotIn predicate on the "term_id" field.
+func TermIDNotIn(vs ...int) predicate.TermPointer {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.TermPointer(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldTermID), v...))
+	})
+}
+
+// TermIDIsNil applies the IsNil predicate on the "term_id" field.
+func TermIDIsNil() predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldTermID)))
+	})
+}
+
+// TermIDNotNil applies the NotNil predicate on the "term_id" field.
+func TermIDNotNil() predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldTermID)))
+	})
+}
+
+// RevisionIDEQ applies the EQ predicate on the "revision_id" field.
+func RevisionIDEQ(v int) predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldRevisionID), v))
+	})
+}
+
+// RevisionIDNEQ applies the NEQ predicate on the "revision_id" field.
+func RevisionIDNEQ(v int) predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldRevisionID), v))
+	})
+}
+
+// RevisionIDIn applies the In predicate on the "revision_id" field.
+func RevisionIDIn(vs ...int) predicate.TermPointer {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.TermPointer(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldRevisionID), v...))
+	})
+}
+
+// RevisionIDNotIn applies the NotIn predicate on the "revision_id" field.
+func RevisionIDNotIn(vs ...int) predicate.TermPointer {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.TermPointer(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldRevisionID), v...))
+	})
+}
+
+// RevisionIDIsNil applies the IsNil predicate on the "revision_id" field.
+func RevisionIDIsNil() predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldRevisionID)))
+	})
+}
+
+// RevisionIDNotNil applies the NotNil predicate on the "revision_id" field.
+func RevisionIDNotNil() predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldRevisionID)))
+	})
+}
+
+// HasTerm applies the HasEdge predicate on the "term" edge.
+func HasTerm() predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(TermTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, TermTable, TermColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTermWith applies the HasEdge predicate on the "term" edge with a given conditions (other predicates).
+func HasTermWith(preds ...predicate.Term) predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(TermInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, TermTable, TermColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasRevision applies the HasEdge predicate on the "revision" edge.
+func HasRevision() predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(RevisionTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, RevisionTable, RevisionColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRevisionWith applies the HasEdge predicate on the "revision" edge with a given conditions (other predicates).
+func HasRevisionWith(preds ...predicate.TermRevision) predicate.TermPointer {
+	return predicate.TermPointer(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(RevisionInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, RevisionTable, RevisionColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
 	})
 }
 

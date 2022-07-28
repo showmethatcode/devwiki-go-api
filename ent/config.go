@@ -26,6 +26,7 @@ type config struct {
 type hooks struct {
 	Term         []ent.Hook
 	TermPointer  []ent.Hook
+	TermRelated  []ent.Hook
 	TermRevision []ent.Hook
 }
 

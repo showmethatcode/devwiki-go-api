@@ -11,6 +11,7 @@ import (
 
 	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrelated"
 	"devwiki/ent/termrevision"
 
 	"entgo.io/ent/dialect"
@@ -27,6 +28,8 @@ type Client struct {
 	Term *TermClient
 	// TermPointer is the client for interacting with the TermPointer builders.
 	TermPointer *TermPointerClient
+	// TermRelated is the client for interacting with the TermRelated builders.
+	TermRelated *TermRelatedClient
 	// TermRevision is the client for interacting with the TermRevision builders.
 	TermRevision *TermRevisionClient
 }
@@ -44,6 +47,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Term = NewTermClient(c.config)
 	c.TermPointer = NewTermPointerClient(c.config)
+	c.TermRelated = NewTermRelatedClient(c.config)
 	c.TermRevision = NewTermRevisionClient(c.config)
 }
 
@@ -80,6 +84,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:       cfg,
 		Term:         NewTermClient(cfg),
 		TermPointer:  NewTermPointerClient(cfg),
+		TermRelated:  NewTermRelatedClient(cfg),
 		TermRevision: NewTermRevisionClient(cfg),
 	}, nil
 }
@@ -102,6 +107,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:       cfg,
 		Term:         NewTermClient(cfg),
 		TermPointer:  NewTermPointerClient(cfg),
+		TermRelated:  NewTermRelatedClient(cfg),
 		TermRevision: NewTermRevisionClient(cfg),
 	}, nil
 }
@@ -134,6 +140,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.Term.Use(hooks...)
 	c.TermPointer.Use(hooks...)
+	c.TermRelated.Use(hooks...)
 	c.TermRevision.Use(hooks...)
 }
 
@@ -238,6 +245,22 @@ func (c *TermClient) QueryRevisions(t *Term) *TermRevisionQuery {
 	return query
 }
 
+// QueryPointers queries the pointers edge of a Term.
+func (c *TermClient) QueryPointers(t *Term) *TermPointerQuery {
+	query := &TermPointerQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(term.Table, term.FieldID, id),
+			sqlgraph.To(termpointer.Table, termpointer.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, term.PointersTable, term.PointersColumn),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *TermClient) Hooks() []Hook {
 	return c.hooks.Term
@@ -328,9 +351,131 @@ func (c *TermPointerClient) GetX(ctx context.Context, id int) *TermPointer {
 	return obj
 }
 
+// QueryTerm queries the term edge of a TermPointer.
+func (c *TermPointerClient) QueryTerm(tp *TermPointer) *TermQuery {
+	query := &TermQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := tp.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(termpointer.Table, termpointer.FieldID, id),
+			sqlgraph.To(term.Table, term.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, termpointer.TermTable, termpointer.TermColumn),
+		)
+		fromV = sqlgraph.Neighbors(tp.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRevision queries the revision edge of a TermPointer.
+func (c *TermPointerClient) QueryRevision(tp *TermPointer) *TermRevisionQuery {
+	query := &TermRevisionQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := tp.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(termpointer.Table, termpointer.FieldID, id),
+			sqlgraph.To(termrevision.Table, termrevision.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, termpointer.RevisionTable, termpointer.RevisionColumn),
+		)
+		fromV = sqlgraph.Neighbors(tp.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *TermPointerClient) Hooks() []Hook {
 	return c.hooks.TermPointer
+}
+
+// TermRelatedClient is a client for the TermRelated schema.
+type TermRelatedClient struct {
+	config
+}
+
+// NewTermRelatedClient returns a client for the TermRelated from the given config.
+func NewTermRelatedClient(c config) *TermRelatedClient {
+	return &TermRelatedClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `termrelated.Hooks(f(g(h())))`.
+func (c *TermRelatedClient) Use(hooks ...Hook) {
+	c.hooks.TermRelated = append(c.hooks.TermRelated, hooks...)
+}
+
+// Create returns a builder for creating a TermRelated entity.
+func (c *TermRelatedClient) Create() *TermRelatedCreate {
+	mutation := newTermRelatedMutation(c.config, OpCreate)
+	return &TermRelatedCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of TermRelated entities.
+func (c *TermRelatedClient) CreateBulk(builders ...*TermRelatedCreate) *TermRelatedCreateBulk {
+	return &TermRelatedCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for TermRelated.
+func (c *TermRelatedClient) Update() *TermRelatedUpdate {
+	mutation := newTermRelatedMutation(c.config, OpUpdate)
+	return &TermRelatedUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TermRelatedClient) UpdateOne(tr *TermRelated) *TermRelatedUpdateOne {
+	mutation := newTermRelatedMutation(c.config, OpUpdateOne, withTermRelated(tr))
+	return &TermRelatedUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TermRelatedClient) UpdateOneID(id int) *TermRelatedUpdateOne {
+	mutation := newTermRelatedMutation(c.config, OpUpdateOne, withTermRelatedID(id))
+	return &TermRelatedUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for TermRelated.
+func (c *TermRelatedClient) Delete() *TermRelatedDelete {
+	mutation := newTermRelatedMutation(c.config, OpDelete)
+	return &TermRelatedDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TermRelatedClient) DeleteOne(tr *TermRelated) *TermRelatedDeleteOne {
+	return c.DeleteOneID(tr.ID)
+}
+
+// DeleteOne returns a builder for deleting the given entity by its id.
+func (c *TermRelatedClient) DeleteOneID(id int) *TermRelatedDeleteOne {
+	builder := c.Delete().Where(termrelated.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TermRelatedDeleteOne{builder}
+}
+
+// Query returns a query builder for TermRelated.
+func (c *TermRelatedClient) Query() *TermRelatedQuery {
+	return &TermRelatedQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a TermRelated entity by its id.
+func (c *TermRelatedClient) Get(ctx context.Context, id int) (*TermRelated, error) {
+	return c.Query().Where(termrelated.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TermRelatedClient) GetX(ctx context.Context, id int) *TermRelated {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *TermRelatedClient) Hooks() []Hook {
+	return c.hooks.TermRelated
 }
 
 // TermRevisionClient is a client for the TermRevision schema.
@@ -416,6 +561,22 @@ func (c *TermRevisionClient) GetX(ctx context.Context, id int) *TermRevision {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryPointers queries the pointers edge of a TermRevision.
+func (c *TermRevisionClient) QueryPointers(tr *TermRevision) *TermPointerQuery {
+	query := &TermPointerQuery{config: c.config}
+	query.path = func(ctx context.Context) (fromV *sql.Selector, _ error) {
+		id := tr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(termrevision.Table, termrevision.FieldID, id),
+			sqlgraph.To(termpointer.Table, termpointer.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, termrevision.PointersTable, termrevision.PointersColumn),
+		)
+		fromV = sqlgraph.Neighbors(tr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // QueryTerm queries the term edge of a TermRevision.

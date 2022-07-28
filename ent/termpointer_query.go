@@ -5,7 +5,9 @@ package ent
 import (
 	"context"
 	"devwiki/ent/predicate"
+	"devwiki/ent/term"
 	"devwiki/ent/termpointer"
+	"devwiki/ent/termrevision"
 	"fmt"
 	"math"
 
@@ -23,6 +25,9 @@ type TermPointerQuery struct {
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.TermPointer
+	// eager-loading edges.
+	withTerm     *TermQuery
+	withRevision *TermRevisionQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -57,6 +62,50 @@ func (tpq *TermPointerQuery) Unique(unique bool) *TermPointerQuery {
 func (tpq *TermPointerQuery) Order(o ...OrderFunc) *TermPointerQuery {
 	tpq.order = append(tpq.order, o...)
 	return tpq
+}
+
+// QueryTerm chains the current query on the "term" edge.
+func (tpq *TermPointerQuery) QueryTerm() *TermQuery {
+	query := &TermQuery{config: tpq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := tpq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := tpq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(termpointer.Table, termpointer.FieldID, selector),
+			sqlgraph.To(term.Table, term.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, termpointer.TermTable, termpointer.TermColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(tpq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryRevision chains the current query on the "revision" edge.
+func (tpq *TermPointerQuery) QueryRevision() *TermRevisionQuery {
+	query := &TermRevisionQuery{config: tpq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := tpq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := tpq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(termpointer.Table, termpointer.FieldID, selector),
+			sqlgraph.To(termrevision.Table, termrevision.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, termpointer.RevisionTable, termpointer.RevisionColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(tpq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first TermPointer entity from the query.
@@ -235,11 +284,13 @@ func (tpq *TermPointerQuery) Clone() *TermPointerQuery {
 		return nil
 	}
 	return &TermPointerQuery{
-		config:     tpq.config,
-		limit:      tpq.limit,
-		offset:     tpq.offset,
-		order:      append([]OrderFunc{}, tpq.order...),
-		predicates: append([]predicate.TermPointer{}, tpq.predicates...),
+		config:       tpq.config,
+		limit:        tpq.limit,
+		offset:       tpq.offset,
+		order:        append([]OrderFunc{}, tpq.order...),
+		predicates:   append([]predicate.TermPointer{}, tpq.predicates...),
+		withTerm:     tpq.withTerm.Clone(),
+		withRevision: tpq.withRevision.Clone(),
 		// clone intermediate query.
 		sql:    tpq.sql.Clone(),
 		path:   tpq.path,
@@ -247,8 +298,43 @@ func (tpq *TermPointerQuery) Clone() *TermPointerQuery {
 	}
 }
 
+// WithTerm tells the query-builder to eager-load the nodes that are connected to
+// the "term" edge. The optional arguments are used to configure the query builder of the edge.
+func (tpq *TermPointerQuery) WithTerm(opts ...func(*TermQuery)) *TermPointerQuery {
+	query := &TermQuery{config: tpq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	tpq.withTerm = query
+	return tpq
+}
+
+// WithRevision tells the query-builder to eager-load the nodes that are connected to
+// the "revision" edge. The optional arguments are used to configure the query builder of the edge.
+func (tpq *TermPointerQuery) WithRevision(opts ...func(*TermRevisionQuery)) *TermPointerQuery {
+	query := &TermRevisionQuery{config: tpq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	tpq.withRevision = query
+	return tpq
+}
+
 // GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
+//
+// Example:
+//
+//	var v []struct {
+//		TermID int `json:"term_id,omitempty"`
+//		Count int `json:"count,omitempty"`
+//	}
+//
+//	client.TermPointer.Query().
+//		GroupBy(termpointer.FieldTermID).
+//		Aggregate(ent.Count()).
+//		Scan(ctx, &v)
+//
 func (tpq *TermPointerQuery) GroupBy(field string, fields ...string) *TermPointerGroupBy {
 	grbuild := &TermPointerGroupBy{config: tpq.config}
 	grbuild.fields = append([]string{field}, fields...)
@@ -265,6 +351,17 @@ func (tpq *TermPointerQuery) GroupBy(field string, fields ...string) *TermPointe
 
 // Select allows the selection one or more fields/columns for the given query,
 // instead of selecting all fields in the entity.
+//
+// Example:
+//
+//	var v []struct {
+//		TermID int `json:"term_id,omitempty"`
+//	}
+//
+//	client.TermPointer.Query().
+//		Select(termpointer.FieldTermID).
+//		Scan(ctx, &v)
+//
 func (tpq *TermPointerQuery) Select(fields ...string) *TermPointerSelect {
 	tpq.fields = append(tpq.fields, fields...)
 	selbuild := &TermPointerSelect{TermPointerQuery: tpq}
@@ -291,8 +388,12 @@ func (tpq *TermPointerQuery) prepareQuery(ctx context.Context) error {
 
 func (tpq *TermPointerQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*TermPointer, error) {
 	var (
-		nodes = []*TermPointer{}
-		_spec = tpq.querySpec()
+		nodes       = []*TermPointer{}
+		_spec       = tpq.querySpec()
+		loadedTypes = [2]bool{
+			tpq.withTerm != nil,
+			tpq.withRevision != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
 		return (*TermPointer).scanValues(nil, columns)
@@ -300,6 +401,7 @@ func (tpq *TermPointerQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	_spec.Assign = func(columns []string, values []interface{}) error {
 		node := &TermPointer{config: tpq.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -311,6 +413,59 @@ func (tpq *TermPointerQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+
+	if query := tpq.withTerm; query != nil {
+		ids := make([]int, 0, len(nodes))
+		nodeids := make(map[int][]*TermPointer)
+		for i := range nodes {
+			fk := nodes[i].TermID
+			if _, ok := nodeids[fk]; !ok {
+				ids = append(ids, fk)
+			}
+			nodeids[fk] = append(nodeids[fk], nodes[i])
+		}
+		query.Where(term.IDIn(ids...))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			nodes, ok := nodeids[n.ID]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "term_id" returned %v`, n.ID)
+			}
+			for i := range nodes {
+				nodes[i].Edges.Term = n
+			}
+		}
+	}
+
+	if query := tpq.withRevision; query != nil {
+		ids := make([]int, 0, len(nodes))
+		nodeids := make(map[int][]*TermPointer)
+		for i := range nodes {
+			fk := nodes[i].RevisionID
+			if _, ok := nodeids[fk]; !ok {
+				ids = append(ids, fk)
+			}
+			nodeids[fk] = append(nodeids[fk], nodes[i])
+		}
+		query.Where(termrevision.IDIn(ids...))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			nodes, ok := nodeids[n.ID]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "revision_id" returned %v`, n.ID)
+			}
+			for i := range nodes {
+				nodes[i].Edges.Revision = n
+			}
+		}
+	}
+
 	return nodes, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"database/sql/driver"
 	"devwiki/ent/predicate"
 	"devwiki/ent/term"
+	"devwiki/ent/termpointer"
 	"devwiki/ent/termrevision"
 	"fmt"
 	"math"
@@ -27,6 +28,7 @@ type TermQuery struct {
 	predicates []predicate.Term
 	// eager-loading edges.
 	withRevisions *TermRevisionQuery
+	withPointers  *TermPointerQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -78,6 +80,28 @@ func (tq *TermQuery) QueryRevisions() *TermRevisionQuery {
 			sqlgraph.From(term.Table, term.FieldID, selector),
 			sqlgraph.To(termrevision.Table, termrevision.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, term.RevisionsTable, term.RevisionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPointers chains the current query on the "pointers" edge.
+func (tq *TermQuery) QueryPointers() *TermPointerQuery {
+	query := &TermPointerQuery{config: tq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := tq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := tq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(term.Table, term.FieldID, selector),
+			sqlgraph.To(termpointer.Table, termpointer.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, term.PointersTable, term.PointersColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(tq.driver.Dialect(), step)
 		return fromU, nil
@@ -267,6 +291,7 @@ func (tq *TermQuery) Clone() *TermQuery {
 		order:         append([]OrderFunc{}, tq.order...),
 		predicates:    append([]predicate.Term{}, tq.predicates...),
 		withRevisions: tq.withRevisions.Clone(),
+		withPointers:  tq.withPointers.Clone(),
 		// clone intermediate query.
 		sql:    tq.sql.Clone(),
 		path:   tq.path,
@@ -282,6 +307,17 @@ func (tq *TermQuery) WithRevisions(opts ...func(*TermRevisionQuery)) *TermQuery 
 		opt(query)
 	}
 	tq.withRevisions = query
+	return tq
+}
+
+// WithPointers tells the query-builder to eager-load the nodes that are connected to
+// the "pointers" edge. The optional arguments are used to configure the query builder of the edge.
+func (tq *TermQuery) WithPointers(opts ...func(*TermPointerQuery)) *TermQuery {
+	query := &TermPointerQuery{config: tq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	tq.withPointers = query
 	return tq
 }
 
@@ -355,8 +391,9 @@ func (tq *TermQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Term, e
 	var (
 		nodes       = []*Term{}
 		_spec       = tq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			tq.withRevisions != nil,
+			tq.withPointers != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
@@ -400,6 +437,31 @@ func (tq *TermQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Term, e
 				return nil, fmt.Errorf(`unexpected foreign-key "term_id" returned %v for node %v`, fk, n.ID)
 			}
 			node.Edges.Revisions = append(node.Edges.Revisions, n)
+		}
+	}
+
+	if query := tq.withPointers; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int]*Term)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Pointers = []*TermPointer{}
+		}
+		query.Where(predicate.TermPointer(func(s *sql.Selector) {
+			s.Where(sql.InValues(term.PointersColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.TermID
+			node, ok := nodeids[fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "term_id" returned %v for node %v`, fk, n.ID)
+			}
+			node.Edges.Pointers = append(node.Edges.Pointers, n)
 		}
 	}
 

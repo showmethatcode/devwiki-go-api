@@ -16,6 +16,8 @@ type Tx struct {
 	Term *TermClient
 	// TermPointer is the client for interacting with the TermPointer builders.
 	TermPointer *TermPointerClient
+	// TermRelated is the client for interacting with the TermRelated builders.
+	TermRelated *TermRelatedClient
 	// TermRevision is the client for interacting with the TermRevision builders.
 	TermRevision *TermRevisionClient
 
@@ -155,6 +157,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Term = NewTermClient(tx.config)
 	tx.TermPointer = NewTermPointerClient(tx.config)
+	tx.TermRelated = NewTermRelatedClient(tx.config)
 	tx.TermRevision = NewTermRevisionClient(tx.config)
 }
 

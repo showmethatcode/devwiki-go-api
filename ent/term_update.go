@@ -6,6 +6,7 @@ import (
 	"context"
 	"devwiki/ent/predicate"
 	"devwiki/ent/term"
+	"devwiki/ent/termpointer"
 	"devwiki/ent/termrevision"
 	"errors"
 	"fmt"
@@ -56,6 +57,21 @@ func (tu *TermUpdate) AddRevisions(t ...*TermRevision) *TermUpdate {
 	return tu.AddRevisionIDs(ids...)
 }
 
+// AddPointerIDs adds the "pointers" edge to the TermPointer entity by IDs.
+func (tu *TermUpdate) AddPointerIDs(ids ...int) *TermUpdate {
+	tu.mutation.AddPointerIDs(ids...)
+	return tu
+}
+
+// AddPointers adds the "pointers" edges to the TermPointer entity.
+func (tu *TermUpdate) AddPointers(t ...*TermPointer) *TermUpdate {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tu.AddPointerIDs(ids...)
+}
+
 // Mutation returns the TermMutation object of the builder.
 func (tu *TermUpdate) Mutation() *TermMutation {
 	return tu.mutation
@@ -80,6 +96,27 @@ func (tu *TermUpdate) RemoveRevisions(t ...*TermRevision) *TermUpdate {
 		ids[i] = t[i].ID
 	}
 	return tu.RemoveRevisionIDs(ids...)
+}
+
+// ClearPointers clears all "pointers" edges to the TermPointer entity.
+func (tu *TermUpdate) ClearPointers() *TermUpdate {
+	tu.mutation.ClearPointers()
+	return tu
+}
+
+// RemovePointerIDs removes the "pointers" edge to TermPointer entities by IDs.
+func (tu *TermUpdate) RemovePointerIDs(ids ...int) *TermUpdate {
+	tu.mutation.RemovePointerIDs(ids...)
+	return tu
+}
+
+// RemovePointers removes "pointers" edges to TermPointer entities.
+func (tu *TermUpdate) RemovePointers(t ...*TermPointer) *TermUpdate {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tu.RemovePointerIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -231,6 +268,60 @@ func (tu *TermUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if tu.mutation.PointersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.PointersTable,
+			Columns: []string{term.PointersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termpointer.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tu.mutation.RemovedPointersIDs(); len(nodes) > 0 && !tu.mutation.PointersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.PointersTable,
+			Columns: []string{term.PointersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termpointer.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tu.mutation.PointersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.PointersTable,
+			Columns: []string{term.PointersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termpointer.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, tu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{term.Label}
@@ -277,6 +368,21 @@ func (tuo *TermUpdateOne) AddRevisions(t ...*TermRevision) *TermUpdateOne {
 	return tuo.AddRevisionIDs(ids...)
 }
 
+// AddPointerIDs adds the "pointers" edge to the TermPointer entity by IDs.
+func (tuo *TermUpdateOne) AddPointerIDs(ids ...int) *TermUpdateOne {
+	tuo.mutation.AddPointerIDs(ids...)
+	return tuo
+}
+
+// AddPointers adds the "pointers" edges to the TermPointer entity.
+func (tuo *TermUpdateOne) AddPointers(t ...*TermPointer) *TermUpdateOne {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tuo.AddPointerIDs(ids...)
+}
+
 // Mutation returns the TermMutation object of the builder.
 func (tuo *TermUpdateOne) Mutation() *TermMutation {
 	return tuo.mutation
@@ -301,6 +407,27 @@ func (tuo *TermUpdateOne) RemoveRevisions(t ...*TermRevision) *TermUpdateOne {
 		ids[i] = t[i].ID
 	}
 	return tuo.RemoveRevisionIDs(ids...)
+}
+
+// ClearPointers clears all "pointers" edges to the TermPointer entity.
+func (tuo *TermUpdateOne) ClearPointers() *TermUpdateOne {
+	tuo.mutation.ClearPointers()
+	return tuo
+}
+
+// RemovePointerIDs removes the "pointers" edge to TermPointer entities by IDs.
+func (tuo *TermUpdateOne) RemovePointerIDs(ids ...int) *TermUpdateOne {
+	tuo.mutation.RemovePointerIDs(ids...)
+	return tuo
+}
+
+// RemovePointers removes "pointers" edges to TermPointer entities.
+func (tuo *TermUpdateOne) RemovePointers(t ...*TermPointer) *TermUpdateOne {
+	ids := make([]int, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return tuo.RemovePointerIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -474,6 +601,60 @@ func (tuo *TermUpdateOne) sqlSave(ctx context.Context) (_node *Term, err error) 
 				IDSpec: &sqlgraph.FieldSpec{
 					Type:   field.TypeInt,
 					Column: termrevision.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if tuo.mutation.PointersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.PointersTable,
+			Columns: []string{term.PointersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termpointer.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tuo.mutation.RemovedPointersIDs(); len(nodes) > 0 && !tuo.mutation.PointersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.PointersTable,
+			Columns: []string{term.PointersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termpointer.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := tuo.mutation.PointersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   term.PointersTable,
+			Columns: []string{term.PointersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: termpointer.FieldID,
 				},
 			},
 		}

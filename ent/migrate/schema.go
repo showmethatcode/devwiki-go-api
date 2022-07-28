@@ -24,12 +24,38 @@ var (
 	// TermPointersColumns holds the columns for the "term_pointers" table.
 	TermPointersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "term_id", Type: field.TypeInt, Nullable: true},
+		{Name: "revision_id", Type: field.TypeInt, Nullable: true},
 	}
 	// TermPointersTable holds the schema information for the "term_pointers" table.
 	TermPointersTable = &schema.Table{
 		Name:       "term_pointers",
 		Columns:    TermPointersColumns,
 		PrimaryKey: []*schema.Column{TermPointersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "term_pointers_terms_pointers",
+				Columns:    []*schema.Column{TermPointersColumns[1]},
+				RefColumns: []*schema.Column{TermsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "term_pointers_term_revisions_pointers",
+				Columns:    []*schema.Column{TermPointersColumns[2]},
+				RefColumns: []*schema.Column{TermRevisionsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
+	// TermRelatedsColumns holds the columns for the "term_relateds" table.
+	TermRelatedsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+	}
+	// TermRelatedsTable holds the schema information for the "term_relateds" table.
+	TermRelatedsTable = &schema.Table{
+		Name:       "term_relateds",
+		Columns:    TermRelatedsColumns,
+		PrimaryKey: []*schema.Column{TermRelatedsColumns[0]},
 	}
 	// TermRevisionsColumns holds the columns for the "term_revisions" table.
 	TermRevisionsColumns = []*schema.Column{
@@ -57,10 +83,13 @@ var (
 	Tables = []*schema.Table{
 		TermsTable,
 		TermPointersTable,
+		TermRelatedsTable,
 		TermRevisionsTable,
 	}
 )
 
 func init() {
+	TermPointersTable.ForeignKeys[0].RefTable = TermsTable
+	TermPointersTable.ForeignKeys[1].RefTable = TermRevisionsTable
 	TermRevisionsTable.ForeignKeys[0].RefTable = TermsTable
 }

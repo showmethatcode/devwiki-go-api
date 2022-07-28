@@ -6,6 +6,7 @@ import (
 	"context"
 	"devwiki/ent/predicate"
 	"devwiki/ent/term"
+	"devwiki/ent/termpointer"
 	"devwiki/ent/termrevision"
 	"errors"
 	"fmt"
@@ -26,6 +27,7 @@ const (
 	// Node types.
 	TypeTerm         = "Term"
 	TypeTermPointer  = "TermPointer"
+	TypeTermRelated  = "TermRelated"
 	TypeTermRevision = "TermRevision"
 )
 
@@ -42,6 +44,9 @@ type TermMutation struct {
 	revisions        map[int]struct{}
 	removedrevisions map[int]struct{}
 	clearedrevisions bool
+	pointers         map[int]struct{}
+	removedpointers  map[int]struct{}
+	clearedpointers  bool
 	done             bool
 	oldValue         func(context.Context) (*Term, error)
 	predicates       []predicate.Term
@@ -307,6 +312,60 @@ func (m *TermMutation) ResetRevisions() {
 	m.removedrevisions = nil
 }
 
+// AddPointerIDs adds the "pointers" edge to the TermPointer entity by ids.
+func (m *TermMutation) AddPointerIDs(ids ...int) {
+	if m.pointers == nil {
+		m.pointers = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.pointers[ids[i]] = struct{}{}
+	}
+}
+
+// ClearPointers clears the "pointers" edge to the TermPointer entity.
+func (m *TermMutation) ClearPointers() {
+	m.clearedpointers = true
+}
+
+// PointersCleared reports if the "pointers" edge to the TermPointer entity was cleared.
+func (m *TermMutation) PointersCleared() bool {
+	return m.clearedpointers
+}
+
+// RemovePointerIDs removes the "pointers" edge to the TermPointer entity by IDs.
+func (m *TermMutation) RemovePointerIDs(ids ...int) {
+	if m.removedpointers == nil {
+		m.removedpointers = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.pointers, ids[i])
+		m.removedpointers[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedPointers returns the removed IDs of the "pointers" edge to the TermPointer entity.
+func (m *TermMutation) RemovedPointersIDs() (ids []int) {
+	for id := range m.removedpointers {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// PointersIDs returns the "pointers" edge IDs in the mutation.
+func (m *TermMutation) PointersIDs() (ids []int) {
+	for id := range m.pointers {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetPointers resets all changes to the "pointers" edge.
+func (m *TermMutation) ResetPointers() {
+	m.pointers = nil
+	m.clearedpointers = false
+	m.removedpointers = nil
+}
+
 // Where appends a list predicates to the TermMutation builder.
 func (m *TermMutation) Where(ps ...predicate.Term) {
 	m.predicates = append(m.predicates, ps...)
@@ -459,9 +518,12 @@ func (m *TermMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TermMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.revisions != nil {
 		edges = append(edges, term.EdgeRevisions)
+	}
+	if m.pointers != nil {
+		edges = append(edges, term.EdgePointers)
 	}
 	return edges
 }
@@ -476,15 +538,24 @@ func (m *TermMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case term.EdgePointers:
+		ids := make([]ent.Value, 0, len(m.pointers))
+		for id := range m.pointers {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TermMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedrevisions != nil {
 		edges = append(edges, term.EdgeRevisions)
+	}
+	if m.removedpointers != nil {
+		edges = append(edges, term.EdgePointers)
 	}
 	return edges
 }
@@ -499,15 +570,24 @@ func (m *TermMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case term.EdgePointers:
+		ids := make([]ent.Value, 0, len(m.removedpointers))
+		for id := range m.removedpointers {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TermMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedrevisions {
 		edges = append(edges, term.EdgeRevisions)
+	}
+	if m.clearedpointers {
+		edges = append(edges, term.EdgePointers)
 	}
 	return edges
 }
@@ -518,6 +598,8 @@ func (m *TermMutation) EdgeCleared(name string) bool {
 	switch name {
 	case term.EdgeRevisions:
 		return m.clearedrevisions
+	case term.EdgePointers:
+		return m.clearedpointers
 	}
 	return false
 }
@@ -537,6 +619,9 @@ func (m *TermMutation) ResetEdge(name string) error {
 	case term.EdgeRevisions:
 		m.ResetRevisions()
 		return nil
+	case term.EdgePointers:
+		m.ResetPointers()
+		return nil
 	}
 	return fmt.Errorf("unknown Term edge %s", name)
 }
@@ -544,13 +629,17 @@ func (m *TermMutation) ResetEdge(name string) error {
 // TermPointerMutation represents an operation that mutates the TermPointer nodes in the graph.
 type TermPointerMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*TermPointer, error)
-	predicates    []predicate.TermPointer
+	op              Op
+	typ             string
+	id              *int
+	clearedFields   map[string]struct{}
+	term            *int
+	clearedterm     bool
+	revision        *int
+	clearedrevision bool
+	done            bool
+	oldValue        func(context.Context) (*TermPointer, error)
+	predicates      []predicate.TermPointer
 }
 
 var _ ent.Mutation = (*TermPointerMutation)(nil)
@@ -651,6 +740,156 @@ func (m *TermPointerMutation) IDs(ctx context.Context) ([]int, error) {
 	}
 }
 
+// SetTermID sets the "term_id" field.
+func (m *TermPointerMutation) SetTermID(i int) {
+	m.term = &i
+}
+
+// TermID returns the value of the "term_id" field in the mutation.
+func (m *TermPointerMutation) TermID() (r int, exists bool) {
+	v := m.term
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTermID returns the old "term_id" field's value of the TermPointer entity.
+// If the TermPointer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TermPointerMutation) OldTermID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTermID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTermID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTermID: %w", err)
+	}
+	return oldValue.TermID, nil
+}
+
+// ClearTermID clears the value of the "term_id" field.
+func (m *TermPointerMutation) ClearTermID() {
+	m.term = nil
+	m.clearedFields[termpointer.FieldTermID] = struct{}{}
+}
+
+// TermIDCleared returns if the "term_id" field was cleared in this mutation.
+func (m *TermPointerMutation) TermIDCleared() bool {
+	_, ok := m.clearedFields[termpointer.FieldTermID]
+	return ok
+}
+
+// ResetTermID resets all changes to the "term_id" field.
+func (m *TermPointerMutation) ResetTermID() {
+	m.term = nil
+	delete(m.clearedFields, termpointer.FieldTermID)
+}
+
+// SetRevisionID sets the "revision_id" field.
+func (m *TermPointerMutation) SetRevisionID(i int) {
+	m.revision = &i
+}
+
+// RevisionID returns the value of the "revision_id" field in the mutation.
+func (m *TermPointerMutation) RevisionID() (r int, exists bool) {
+	v := m.revision
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRevisionID returns the old "revision_id" field's value of the TermPointer entity.
+// If the TermPointer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TermPointerMutation) OldRevisionID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRevisionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRevisionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRevisionID: %w", err)
+	}
+	return oldValue.RevisionID, nil
+}
+
+// ClearRevisionID clears the value of the "revision_id" field.
+func (m *TermPointerMutation) ClearRevisionID() {
+	m.revision = nil
+	m.clearedFields[termpointer.FieldRevisionID] = struct{}{}
+}
+
+// RevisionIDCleared returns if the "revision_id" field was cleared in this mutation.
+func (m *TermPointerMutation) RevisionIDCleared() bool {
+	_, ok := m.clearedFields[termpointer.FieldRevisionID]
+	return ok
+}
+
+// ResetRevisionID resets all changes to the "revision_id" field.
+func (m *TermPointerMutation) ResetRevisionID() {
+	m.revision = nil
+	delete(m.clearedFields, termpointer.FieldRevisionID)
+}
+
+// ClearTerm clears the "term" edge to the Term entity.
+func (m *TermPointerMutation) ClearTerm() {
+	m.clearedterm = true
+}
+
+// TermCleared reports if the "term" edge to the Term entity was cleared.
+func (m *TermPointerMutation) TermCleared() bool {
+	return m.TermIDCleared() || m.clearedterm
+}
+
+// TermIDs returns the "term" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// TermID instead. It exists only for internal usage by the builders.
+func (m *TermPointerMutation) TermIDs() (ids []int) {
+	if id := m.term; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTerm resets all changes to the "term" edge.
+func (m *TermPointerMutation) ResetTerm() {
+	m.term = nil
+	m.clearedterm = false
+}
+
+// ClearRevision clears the "revision" edge to the TermRevision entity.
+func (m *TermPointerMutation) ClearRevision() {
+	m.clearedrevision = true
+}
+
+// RevisionCleared reports if the "revision" edge to the TermRevision entity was cleared.
+func (m *TermPointerMutation) RevisionCleared() bool {
+	return m.RevisionIDCleared() || m.clearedrevision
+}
+
+// RevisionIDs returns the "revision" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RevisionID instead. It exists only for internal usage by the builders.
+func (m *TermPointerMutation) RevisionIDs() (ids []int) {
+	if id := m.revision; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRevision resets all changes to the "revision" edge.
+func (m *TermPointerMutation) ResetRevision() {
+	m.revision = nil
+	m.clearedrevision = false
+}
+
 // Where appends a list predicates to the TermPointerMutation builder.
 func (m *TermPointerMutation) Where(ps ...predicate.TermPointer) {
 	m.predicates = append(m.predicates, ps...)
@@ -670,7 +909,13 @@ func (m *TermPointerMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TermPointerMutation) Fields() []string {
-	fields := make([]string, 0, 0)
+	fields := make([]string, 0, 2)
+	if m.term != nil {
+		fields = append(fields, termpointer.FieldTermID)
+	}
+	if m.revision != nil {
+		fields = append(fields, termpointer.FieldRevisionID)
+	}
 	return fields
 }
 
@@ -678,6 +923,12 @@ func (m *TermPointerMutation) Fields() []string {
 // return value indicates that this field was not set, or was not defined in the
 // schema.
 func (m *TermPointerMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case termpointer.FieldTermID:
+		return m.TermID()
+	case termpointer.FieldRevisionID:
+		return m.RevisionID()
+	}
 	return nil, false
 }
 
@@ -685,6 +936,12 @@ func (m *TermPointerMutation) Field(name string) (ent.Value, bool) {
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
 func (m *TermPointerMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case termpointer.FieldTermID:
+		return m.OldTermID(ctx)
+	case termpointer.FieldRevisionID:
+		return m.OldRevisionID(ctx)
+	}
 	return nil, fmt.Errorf("unknown TermPointer field %s", name)
 }
 
@@ -693,6 +950,20 @@ func (m *TermPointerMutation) OldField(ctx context.Context, name string) (ent.Va
 // type.
 func (m *TermPointerMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case termpointer.FieldTermID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTermID(v)
+		return nil
+	case termpointer.FieldRevisionID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRevisionID(v)
+		return nil
 	}
 	return fmt.Errorf("unknown TermPointer field %s", name)
 }
@@ -700,13 +971,16 @@ func (m *TermPointerMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *TermPointerMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *TermPointerMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
 	return nil, false
 }
 
@@ -714,13 +988,22 @@ func (m *TermPointerMutation) AddedField(name string) (ent.Value, bool) {
 // the field is not defined in the schema, or if the type mismatched the field
 // type.
 func (m *TermPointerMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown TermPointer numeric field %s", name)
 }
 
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *TermPointerMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(termpointer.FieldTermID) {
+		fields = append(fields, termpointer.FieldTermID)
+	}
+	if m.FieldCleared(termpointer.FieldRevisionID) {
+		fields = append(fields, termpointer.FieldRevisionID)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -733,78 +1016,392 @@ func (m *TermPointerMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *TermPointerMutation) ClearField(name string) error {
+	switch name {
+	case termpointer.FieldTermID:
+		m.ClearTermID()
+		return nil
+	case termpointer.FieldRevisionID:
+		m.ClearRevisionID()
+		return nil
+	}
 	return fmt.Errorf("unknown TermPointer nullable field %s", name)
 }
 
 // ResetField resets all changes in the mutation for the field with the given name.
 // It returns an error if the field is not defined in the schema.
 func (m *TermPointerMutation) ResetField(name string) error {
+	switch name {
+	case termpointer.FieldTermID:
+		m.ResetTermID()
+		return nil
+	case termpointer.FieldRevisionID:
+		m.ResetRevisionID()
+		return nil
+	}
 	return fmt.Errorf("unknown TermPointer field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TermPointerMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.term != nil {
+		edges = append(edges, termpointer.EdgeTerm)
+	}
+	if m.revision != nil {
+		edges = append(edges, termpointer.EdgeRevision)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *TermPointerMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case termpointer.EdgeTerm:
+		if id := m.term; id != nil {
+			return []ent.Value{*id}
+		}
+	case termpointer.EdgeRevision:
+		if id := m.revision; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TermPointerMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *TermPointerMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TermPointerMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 2)
+	if m.clearedterm {
+		edges = append(edges, termpointer.EdgeTerm)
+	}
+	if m.clearedrevision {
+		edges = append(edges, termpointer.EdgeRevision)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *TermPointerMutation) EdgeCleared(name string) bool {
+	switch name {
+	case termpointer.EdgeTerm:
+		return m.clearedterm
+	case termpointer.EdgeRevision:
+		return m.clearedrevision
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *TermPointerMutation) ClearEdge(name string) error {
+	switch name {
+	case termpointer.EdgeTerm:
+		m.ClearTerm()
+		return nil
+	case termpointer.EdgeRevision:
+		m.ClearRevision()
+		return nil
+	}
 	return fmt.Errorf("unknown TermPointer unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *TermPointerMutation) ResetEdge(name string) error {
+	switch name {
+	case termpointer.EdgeTerm:
+		m.ResetTerm()
+		return nil
+	case termpointer.EdgeRevision:
+		m.ResetRevision()
+		return nil
+	}
 	return fmt.Errorf("unknown TermPointer edge %s", name)
+}
+
+// TermRelatedMutation represents an operation that mutates the TermRelated nodes in the graph.
+type TermRelatedMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *int
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*TermRelated, error)
+	predicates    []predicate.TermRelated
+}
+
+var _ ent.Mutation = (*TermRelatedMutation)(nil)
+
+// termrelatedOption allows management of the mutation configuration using functional options.
+type termrelatedOption func(*TermRelatedMutation)
+
+// newTermRelatedMutation creates new mutation for the TermRelated entity.
+func newTermRelatedMutation(c config, op Op, opts ...termrelatedOption) *TermRelatedMutation {
+	m := &TermRelatedMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeTermRelated,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withTermRelatedID sets the ID field of the mutation.
+func withTermRelatedID(id int) termrelatedOption {
+	return func(m *TermRelatedMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *TermRelated
+		)
+		m.oldValue = func(ctx context.Context) (*TermRelated, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().TermRelated.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withTermRelated sets the old TermRelated of the mutation.
+func withTermRelated(node *TermRelated) termrelatedOption {
+	return func(m *TermRelatedMutation) {
+		m.oldValue = func(context.Context) (*TermRelated, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m TermRelatedMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m TermRelatedMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *TermRelatedMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *TermRelatedMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().TermRelated.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// Where appends a list predicates to the TermRelatedMutation builder.
+func (m *TermRelatedMutation) Where(ps ...predicate.TermRelated) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// Op returns the operation name.
+func (m *TermRelatedMutation) Op() Op {
+	return m.op
+}
+
+// Type returns the node type of this mutation (TermRelated).
+func (m *TermRelatedMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *TermRelatedMutation) Fields() []string {
+	fields := make([]string, 0, 0)
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *TermRelatedMutation) Field(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *TermRelatedMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	return nil, fmt.Errorf("unknown TermRelated field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TermRelatedMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown TermRelated field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *TermRelatedMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *TermRelatedMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TermRelatedMutation) AddField(name string, value ent.Value) error {
+	return fmt.Errorf("unknown TermRelated numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *TermRelatedMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *TermRelatedMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *TermRelatedMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown TermRelated nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *TermRelatedMutation) ResetField(name string) error {
+	return fmt.Errorf("unknown TermRelated field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *TermRelatedMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *TermRelatedMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *TermRelatedMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *TermRelatedMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *TermRelatedMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *TermRelatedMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *TermRelatedMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown TermRelated unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *TermRelatedMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown TermRelated edge %s", name)
 }
 
 // TermRevisionMutation represents an operation that mutates the TermRevision nodes in the graph.
 type TermRevisionMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	description   *string
-	created_at    *time.Time
-	updated_at    *time.Time
-	clearedFields map[string]struct{}
-	term          *int
-	clearedterm   bool
-	done          bool
-	oldValue      func(context.Context) (*TermRevision, error)
-	predicates    []predicate.TermRevision
+	op              Op
+	typ             string
+	id              *int
+	description     *string
+	created_at      *time.Time
+	updated_at      *time.Time
+	clearedFields   map[string]struct{}
+	pointers        map[int]struct{}
+	removedpointers map[int]struct{}
+	clearedpointers bool
+	term            *int
+	clearedterm     bool
+	done            bool
+	oldValue        func(context.Context) (*TermRevision, error)
+	predicates      []predicate.TermRevision
 }
 
 var _ ent.Mutation = (*TermRevisionMutation)(nil)
@@ -1075,6 +1672,60 @@ func (m *TermRevisionMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
+// AddPointerIDs adds the "pointers" edge to the TermPointer entity by ids.
+func (m *TermRevisionMutation) AddPointerIDs(ids ...int) {
+	if m.pointers == nil {
+		m.pointers = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.pointers[ids[i]] = struct{}{}
+	}
+}
+
+// ClearPointers clears the "pointers" edge to the TermPointer entity.
+func (m *TermRevisionMutation) ClearPointers() {
+	m.clearedpointers = true
+}
+
+// PointersCleared reports if the "pointers" edge to the TermPointer entity was cleared.
+func (m *TermRevisionMutation) PointersCleared() bool {
+	return m.clearedpointers
+}
+
+// RemovePointerIDs removes the "pointers" edge to the TermPointer entity by IDs.
+func (m *TermRevisionMutation) RemovePointerIDs(ids ...int) {
+	if m.removedpointers == nil {
+		m.removedpointers = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.pointers, ids[i])
+		m.removedpointers[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedPointers returns the removed IDs of the "pointers" edge to the TermPointer entity.
+func (m *TermRevisionMutation) RemovedPointersIDs() (ids []int) {
+	for id := range m.removedpointers {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// PointersIDs returns the "pointers" edge IDs in the mutation.
+func (m *TermRevisionMutation) PointersIDs() (ids []int) {
+	for id := range m.pointers {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetPointers resets all changes to the "pointers" edge.
+func (m *TermRevisionMutation) ResetPointers() {
+	m.pointers = nil
+	m.clearedpointers = false
+	m.removedpointers = nil
+}
+
 // ClearTerm clears the "term" edge to the Term entity.
 func (m *TermRevisionMutation) ClearTerm() {
 	m.clearedterm = true
@@ -1288,7 +1939,10 @@ func (m *TermRevisionMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TermRevisionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.pointers != nil {
+		edges = append(edges, termrevision.EdgePointers)
+	}
 	if m.term != nil {
 		edges = append(edges, termrevision.EdgeTerm)
 	}
@@ -1299,6 +1953,12 @@ func (m *TermRevisionMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *TermRevisionMutation) AddedIDs(name string) []ent.Value {
 	switch name {
+	case termrevision.EdgePointers:
+		ids := make([]ent.Value, 0, len(m.pointers))
+		for id := range m.pointers {
+			ids = append(ids, id)
+		}
+		return ids
 	case termrevision.EdgeTerm:
 		if id := m.term; id != nil {
 			return []ent.Value{*id}
@@ -1309,7 +1969,10 @@ func (m *TermRevisionMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TermRevisionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removedpointers != nil {
+		edges = append(edges, termrevision.EdgePointers)
+	}
 	return edges
 }
 
@@ -1317,13 +1980,22 @@ func (m *TermRevisionMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *TermRevisionMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
+	case termrevision.EdgePointers:
+		ids := make([]ent.Value, 0, len(m.removedpointers))
+		for id := range m.removedpointers {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TermRevisionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.clearedpointers {
+		edges = append(edges, termrevision.EdgePointers)
+	}
 	if m.clearedterm {
 		edges = append(edges, termrevision.EdgeTerm)
 	}
@@ -1334,6 +2006,8 @@ func (m *TermRevisionMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *TermRevisionMutation) EdgeCleared(name string) bool {
 	switch name {
+	case termrevision.EdgePointers:
+		return m.clearedpointers
 	case termrevision.EdgeTerm:
 		return m.clearedterm
 	}
@@ -1355,6 +2029,9 @@ func (m *TermRevisionMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *TermRevisionMutation) ResetEdge(name string) error {
 	switch name {
+	case termrevision.EdgePointers:
+		m.ResetPointers()
+		return nil
 	case termrevision.EdgeTerm:
 		m.ResetTerm()
 		return nil

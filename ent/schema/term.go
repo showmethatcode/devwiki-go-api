@@ -32,5 +32,6 @@ func (Term) Fields() []ent.Field {
 func (Term) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("revisions", TermRevision.Type),
+		edge.To("pointers", TermPointer.Type),
 	}
 }
